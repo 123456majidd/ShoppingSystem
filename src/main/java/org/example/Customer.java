@@ -1,21 +1,27 @@
 package org.example;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 public class Customer extends User {
+    private static final long serialVersionUID = 1L;
     private String level;
     private String registerTime;
     private double totalSpent;
     private String email;
-    private ShoppingCart shoppingCart = new ShoppingCart();
+    private transient ShoppingCart shoppingCart = new ShoppingCart();
     private int failedLoginCount = 0;
     private boolean locked = false;
     private boolean lastLoginLocked = false;
+
+    // 反序列化时购物车不持久化，自动重建空购物车，避免空指针
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        this.shoppingCart = new ShoppingCart();
+    }
 
     public boolean isLastLoginLocked() {
         return lastLoginLocked;
@@ -749,4 +755,3 @@ public class Customer extends User {
     }
 
 }
-
