@@ -1,7 +1,6 @@
 package org.example;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class ShoppingSystem {
@@ -69,23 +68,12 @@ public class ShoppingSystem {
                                         return;
                                     }
                                 }
-                                File infoFile = new File(userFolder, admin.getUserId()+"_information.txt");
-                                boolean adminSaved = false;
-                                try (BufferedWriter bw = new BufferedWriter(new FileWriter(infoFile, StandardCharsets.UTF_8))) {
-                                    bw.write("用户名：" + admin.getUserName());
-                                    bw.newLine();
-                                    bw.write("用户ID：" + admin.getUserId());
-                                    bw.newLine();
-                                    bw.write("手机号：" + admin.getUserPhoneNumber());
-                                    bw.newLine();
-                                    bw.write("密码：" + admin.getPassword());
-                                    bw.newLine();
-                                    adminSaved = true;
-                                }
-                                catch (IOException e) {
-                                    System.out.println("用户信息保存失败：" + e.getMessage());
-                                    e.printStackTrace();
-                                }
+                                boolean adminSaved = Tools.writeAdminToFile(
+                                        userFolderPath,
+                                        admin.getUserId() + "_information.dat",
+                                        admin.getUserName(),
+                                        admin.getUserId(),
+                                        admin.getPassword());
                                 if (!adminSaved) {
                                     System.out.println("管理员信息未保存成功，请检查磁盘空间与目录权限后重新操作");
                                     return;
