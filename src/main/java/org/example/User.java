@@ -1,6 +1,9 @@
 package org.example;
 
-abstract public class User {
+import java.io.Serializable;
+
+abstract public class User implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String userName;
     private String password;
     private String userId;
@@ -46,4 +49,3 @@ abstract public class User {
 
     abstract public void changePassword();
 }
-
