@@ -17,6 +17,7 @@ public class Customer extends User {
     private boolean locked = false;
     private boolean lastLoginLocked = false;
 
+    // 反序列化时购物车不持久化，自动重建空购物车，避免空指针
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
         in.defaultReadObject();
         this.shoppingCart = new ShoppingCart();
@@ -584,10 +585,10 @@ public class Customer extends User {
                     for (int i = 0; i < shoppingCart.numberOfGoods; i++) {
                         Good item = this.shoppingCart.goods[i];
                         double itemTotal = item.retailPrice * item.number;
-                        String record = item.goodName + " | 数量：" + item.number + " | 金额：" + itemTotal;
+                        String record = item.goodName + " | 数量：" + item.number + " | 金额：" + Tools.formatMoney(itemTotal);
                         Tools.appendShoppingHistory(userFolderPath, record);
                     }
-                    Tools.appendShoppingHistory(userFolderPath, "--- 订单合计：" + orderTotal + " ---");
+                    Tools.appendShoppingHistory(userFolderPath, "--- 订单合计：" + Tools.formatMoney(orderTotal) + " ---");
                     System.out.println("订单记录已成功写入购物历史！");
                     boolean customerSaved = Tools.writeCustomerInformationToFile(this, userFolderPath);
                     if (!customerSaved) {
@@ -631,7 +632,7 @@ public class Customer extends User {
                 for (int i = 0; i < orderNames.size(); i++) {
                     System.out.println(currentTime + " " + orderNames.get(i)
                             + " | 数量：" + orderQtys.get(i)
-                            + " | 金额：" + orderAmts.get(i));
+                            + " | 金额：" + Tools.formatMoney(orderAmts.get(i)));
                 }
                 System.out.println(line);
                 orderNames.clear();

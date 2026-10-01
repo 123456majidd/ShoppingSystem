@@ -90,6 +90,7 @@ public class Admin extends User {
         }
         if (result==1) {
             customer.setPassword("ynuinfo#777");
+            // 重置密码同时解锁账户、清零连续失败次数
             customer.setFailedLoginCount(0);
             customer.setLocked(false);
             boolean saved = Tools.writeCustomerInformationToFile(customer, "src/customerInformation/" + customerId);
@@ -115,7 +116,7 @@ public class Admin extends User {
             System.out.println("客户的用户ID为：" + c.getUserId());
             System.out.println("客户的等级为：" + c.getLevel());
             System.out.println("客户的注册时间为：" + c.getRegisterTime());
-            System.out.println("客户的总花费为：" + c.getTotalSpent());
+            System.out.println("客户的总花费为：" + Tools.formatMoney(c.getTotalSpent()));
             System.out.println("客户的邮箱为：" + c.getEmail());
             System.out.println("客户的手机号为：" + c.getUserPhoneNumber());
             System.out.println("------------------");
@@ -139,7 +140,7 @@ public class Admin extends User {
                     System.out.println("客户的用户ID为：" + c.getUserId());
                     System.out.println("客户的等级为：" + c.getLevel());
                     System.out.println("客户的注册时间为：" + c.getRegisterTime());
-                    System.out.println("客户的总花费为：" + c.getTotalSpent());
+                    System.out.println("客户的总花费为：" + Tools.formatMoney(c.getTotalSpent()));
                     System.out.println("客户的邮箱为：" + c.getEmail());
                     System.out.println("客户的手机号为：" + c.getUserPhoneNumber());
                     System.out.println("------------------");
@@ -149,15 +150,15 @@ public class Admin extends User {
             boolean found = false;
             for (int i = 0; i < customerNumber; i++) {
                 if (customers[i].getUserId().equals(keyword) || customers[i].getUserName().equals(keyword)) {
+                    found = true;
                     System.out.println("客户的用户名为：" + customers[i].getUserName());
                     System.out.println("客户的用户ID为：" + customers[i].getUserId());
                     System.out.println("客户的等级为：" + customers[i].getLevel());
                     System.out.println("客户的注册时间为：" + customers[i].getRegisterTime());
-                    System.out.println("客户的总花费为：" + customers[i].getTotalSpent());
+                    System.out.println("客户的总花费为：" + Tools.formatMoney(customers[i].getTotalSpent()));
                     System.out.println("客户的邮箱为：" + customers[i].getEmail());
                     System.out.println("客户的手机号为：" + customers[i].getUserPhoneNumber());
-                    found = true;
-                    break;
+                    System.out.println("------------------");
                 }
             }
             if (!found) {
@@ -739,6 +740,7 @@ public class Admin extends User {
             System.out.println("请输入管理员密码：");
             String adminPassword = scanner.next();
             if (adminPassword.equals("ynuinfo#777")) {
+                // 重置为默认管理员状态，保证每次用 admin 登录都会进入首次注册流程，行为一致
                 user.setUserName("admin");
                 user.setPassword("ynuinfo#777");
                 user.setUserId("admin12345678900");

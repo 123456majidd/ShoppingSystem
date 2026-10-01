@@ -447,6 +447,10 @@ public class Tools {
         return password.matches(regex);
     }
 
+    public static String formatMoney(double value) {
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
     public static boolean chioceIfContinue() {
         Scanner sc = SCANNER;
         int chioce = 0;
