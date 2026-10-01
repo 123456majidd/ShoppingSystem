@@ -90,7 +90,6 @@ public class Admin extends User {
         }
         if (result==1) {
             customer.setPassword("ynuinfo#777");
-            // 重置密码同时解锁账户、清零连续失败次数
             customer.setFailedLoginCount(0);
             customer.setLocked(false);
             boolean saved = Tools.writeCustomerInformationToFile(customer, "src/customerInformation/" + customerId);
@@ -740,7 +739,6 @@ public class Admin extends User {
             System.out.println("请输入管理员密码：");
             String adminPassword = scanner.next();
             if (adminPassword.equals("ynuinfo#777")) {
-                // 重置为默认管理员状态，保证每次用 admin 登录都会进入首次注册流程，行为一致
                 user.setUserName("admin");
                 user.setPassword("ynuinfo#777");
                 user.setUserId("admin12345678900");

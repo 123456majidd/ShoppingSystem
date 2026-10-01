@@ -17,7 +17,6 @@ public class Customer extends User {
     private boolean locked = false;
     private boolean lastLoginLocked = false;
 
-    // 反序列化时购物车不持久化，自动重建空购物车，避免空指针
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
         in.defaultReadObject();
         this.shoppingCart = new ShoppingCart();
@@ -188,7 +187,6 @@ public class Customer extends User {
             System.out.println("密码重置取消。");
             return;
         }
-        // 忘记密码流程：输入用户名 + 注册邮箱验证身份，系统生成随机密码（模拟发送到邮箱）
         System.out.println("请输入您的用户名：");
         String inputName = sc.next();
         System.out.println("请输入您的注册邮箱：");
