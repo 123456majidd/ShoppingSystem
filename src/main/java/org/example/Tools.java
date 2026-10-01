@@ -375,7 +375,11 @@ public class Tools {
     public static void inputProductInformation(Good good){
         Scanner sc = SCANNER;
         System.out.println("请输入商品的名称：");
-        good.goodName = sc.next();
+        String inputName;
+        do {
+            inputName = sc.nextLine();
+        } while (inputName.trim().isEmpty());
+        good.goodName = inputName.trim();
         while (true) {
             System.out.println("请输入商品的编号（格式：4位数字，比如0001）：");
             String inputId = sc.next();
@@ -392,7 +396,11 @@ public class Tools {
             break;
         }
         System.out.println("请输入商品的生产者：");
-        good.producer = sc.next();
+        String inputProducer;
+        do {
+            inputProducer = sc.nextLine();
+        } while (inputProducer.trim().isEmpty());
+        good.producer = inputProducer.trim();
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
         while (true) {
             System.out.println("请输入商品的生产时间（格式：yyyy-MM-dd）：");
@@ -406,7 +414,11 @@ public class Tools {
             }
         }
         System.out.println("请输入商品的类型：");
-        good.type = sc.next();
+        String inputType;
+        do {
+            inputType = sc.nextLine();
+        } while (inputType.trim().isEmpty());
+        good.type = inputType.trim();
         System.out.println("请输入商品的采购价格：");
         while (true) {
             double price = 0;
@@ -582,7 +594,6 @@ public class Tools {
             return false;
         }
         return true;
-
     }
 
 }

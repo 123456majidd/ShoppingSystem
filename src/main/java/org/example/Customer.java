@@ -2,6 +2,7 @@ package org.example;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,11 @@ public class Customer extends User {
     private ShoppingCart shoppingCart = new ShoppingCart();
     private int failedLoginCount = 0;
     private boolean locked = false;
+    private boolean lastLoginLocked = false;
+
+    public boolean isLastLoginLocked() {
+        return lastLoginLocked;
+    }
 
     public Customer() {
         this.setUserName("Customer");
@@ -262,12 +268,29 @@ public class Customer extends User {
                 System.out.println("添加数量必须大于0");
                 continue;
             }
-            cartGood.number = quantity;
-            this.shoppingCart.goods[cartIndex] = cartGood;
-            cartIndex++;
-            this.shoppingCart.numberOfGoods = cartIndex;
-            System.out.println("商品已成功加入购物车");
-            Tools.writeShoppingCartToFile("src/customerInformation/" + this.getUserId(), this.shoppingCart);
+            boolean found = false;
+            for (int j = 0; j < cartIndex; j++) {
+                if (shoppingCart.goods[j] != null && shoppingCart.goods[j].goodId.equals(cartGood.goodId)) {
+                    int newQuantity = shoppingCart.goods[j].number + quantity;
+                    if (newQuantity > cartGood.number) {
+                        System.out.println("库存不足，当前库存：" + cartGood.number + "，购物车已有：" + shoppingCart.goods[j].number);
+                        found = true;
+                        break;
+                    }
+                    shoppingCart.goods[j].number = newQuantity;
+                    found = true;
+                    System.out.println("商品已在购物车中，数量已累加为：" + newQuantity);
+                    break;
+                }
+            }
+            if (!found) {
+                cartGood.number = quantity;
+                this.shoppingCart.goods[cartIndex] = cartGood;
+                cartIndex++;
+                this.shoppingCart.numberOfGoods = cartIndex;
+                System.out.println("商品已成功加入购物车");
+            }
+
             System.out.println("请问您还要继续添加商品吗？（1.是；2.否）");
             while (!sc.hasNextInt()) {
                 System.out.println("输入无效，请输入1或2：");
@@ -301,30 +324,38 @@ public class Customer extends User {
                 if (goodId.equals(this.shoppingCart.goods[i].goodId)) {
                     foundInCart = true;
                     System.out.println("请输入该商品的新数量（输入小于等于0的数量将从购物车清除该商品）：");
-                    int number = 0;
                     while(true) {
+                        int number = 0;
                         try{
                             number = sc.nextInt();
-                            break;
                         }
                         catch (Exception e) {
                             System.out.println("输入无效，请输入整数数量：");
                             sc.nextLine();
+                            continue;
                         }
-                    }
-                    if (number <= 0) {
-                        String removedName = this.shoppingCart.goods[i].goodName;
-                        for (int k = i; k < this.shoppingCart.numberOfGoods - 1; k++) {
-                            this.shoppingCart.goods[k] = this.shoppingCart.goods[k + 1];
+                        if (number <= 0) {
+                            String removedName = this.shoppingCart.goods[i].goodName;
+                            for (int k = i; k < this.shoppingCart.numberOfGoods - 1; k++) {
+                                this.shoppingCart.goods[k] = this.shoppingCart.goods[k + 1];
+                            }
+                            this.shoppingCart.goods[this.shoppingCart.numberOfGoods - 1] = null;
+                            this.shoppingCart.numberOfGoods--;
+                            System.out.println("数量小于等于0，商品【" + removedName + "】已从购物车清除");
+                            break;
                         }
-                        this.shoppingCart.goods[this.shoppingCart.numberOfGoods - 1] = null;
-                        this.shoppingCart.numberOfGoods--;
-                        Tools.writeShoppingCartToFile("src/customerInformation/" + this.getUserId(), this.shoppingCart);
-                        System.out.println("数量小于等于0，商品【" + removedName + "】已从购物车清除");
-                    } else {
+                        Good stock = Tools.readGoodsInformationFromFolder(new File("src/gooodsInformation/" + goodId));
+                        if (stock == null) {
+                            System.out.println("商品数据缺失，无法修改数量，请重新输入：");
+                            continue;
+                        }
+                        if (number > stock.number) {
+                            System.out.println("库存不足，当前库存：" + stock.number + "，修改未生效，请重新输入数量：");
+                            continue;
+                        }
                         this.shoppingCart.goods[i].number = number;
                         System.out.println("商品修改成功！");
-                        Tools.writeShoppingCartToFile("src/customerInformation/" + this.getUserId(), this.shoppingCart);
+                        break;
                     }
                     break;
                 }
@@ -426,7 +457,6 @@ public class Customer extends User {
                 this.shoppingCart.goods[cartSize - 1] = null;
                 this.shoppingCart.numberOfGoods = cartSize - 1;
                 System.out.println("商品删除成功！");
-                Tools.writeShoppingCartToFile("src/customerInformation/" + this.getUserId(), this.shoppingCart);
             } else {
                 System.out.println("商品删除取消。");
             }
@@ -463,7 +493,9 @@ public class Customer extends User {
         double orderTotal = 0;
         for (int i = 0; i < shoppingCart.numberOfGoods; i++) {
             System.out.print("商品名：" + shoppingCart.goods[i].goodName);
+            System.out.print(" 数量：" + shoppingCart.goods[i].number);
             System.out.println(" 商品价格：" + shoppingCart.goods[i].retailPrice);
+            System.out.println("该商品总价：" + (shoppingCart.goods[i].retailPrice * shoppingCart.goods[i].number));
             orderTotal += shoppingCart.goods[i].retailPrice * shoppingCart.goods[i].number;
         }
         System.out.println("本单金额为：" + orderTotal);
@@ -528,10 +560,8 @@ public class Customer extends User {
                     System.out.println("支付方式错误，请重新输入：");
                 }
                 if (result) {
-                    // 支付成功后才累加总花费并持久化，避免"继续购物"分支错误清零累计值
                     this.totalSpent += orderTotal;
                     String userFolderPath = "src/customerInformation/" + this.getUserId();
-                    // 支付成功后扣减商品库存并写回商品文件
                     for (int i = 0; i < shoppingCart.numberOfGoods; i++) {
                         Good item = this.shoppingCart.goods[i];
                         Good stock = Tools.readGoodsInformationFromFolder(new File("src/gooodsInformation/" + item.goodId));
@@ -563,7 +593,6 @@ public class Customer extends User {
                         this.shoppingCart.goods[i] = null;
                     }
                     this.shoppingCart.numberOfGoods = 0;
-                    Tools.writeShoppingCartToFile(userFolderPath, this.shoppingCart);
                     System.out.println("谢谢使用！");
                     break;
                 }
@@ -582,8 +611,48 @@ public class Customer extends User {
             return;
         }
         System.out.println("\n========== 您的购物历史 ==========");
+        List<String> orderNames = new ArrayList<>();
+        List<Integer> orderQtys = new ArrayList<>();
+        List<Double> orderAmts = new ArrayList<>();
+        String currentTime = "";
         for (String line : history) {
-            System.out.println(line);
+            if (!line.startsWith("[")) {
+                System.out.println(line);
+                continue;
+            }
+            int timeEnd = line.indexOf("]");
+            String time = line.substring(0, timeEnd + 1);
+            String content = line.substring(timeEnd + 1).trim();
+            if (content.startsWith("---")) {
+                for (int i = 0; i < orderNames.size(); i++) {
+                    System.out.println(currentTime + " " + orderNames.get(i)
+                            + " | 数量：" + orderQtys.get(i)
+                            + " | 金额：" + orderAmts.get(i));
+                }
+                System.out.println(line);
+                orderNames.clear();
+                orderQtys.clear();
+                orderAmts.clear();
+                currentTime = "";
+                continue;
+            }
+            currentTime = time;
+            int nameEnd = content.indexOf(" | ");
+            String name = content.substring(0, nameEnd);
+            int qtyStart = content.indexOf("数量：") + 3;
+            int qtyEnd = content.indexOf(" | ", qtyStart);
+            int qty = Integer.parseInt(content.substring(qtyStart, qtyEnd).trim());
+            int amtStart = content.indexOf("金额：") + 3;
+            double amt = Double.parseDouble(content.substring(amtStart).trim());
+            int idx = orderNames.indexOf(name);
+            if (idx >= 0) {
+                orderQtys.set(idx, orderQtys.get(idx) + qty);
+                orderAmts.set(idx, orderAmts.get(idx) + amt);
+            } else {
+                orderNames.add(name);
+                orderQtys.add(qty);
+                orderAmts.add(amt);
+            }
         }
         System.out.println("==================================\n");
     }
@@ -626,65 +695,58 @@ public class Customer extends User {
     public boolean login(User user) {
         Scanner scanner = Tools.SCANNER;
         System.out.println("请输入用户ID（用户名+手机号）：");
-        String inputUserId = "";
-        while (true) {
-            inputUserId = scanner.next();
-            if (!inputUserId.isEmpty() && !inputUserId.contains("/") && !inputUserId.contains("\\") && !inputUserId.contains("..")) {
-                break;
-            }
-            System.out.println("用户ID不合法（不能为空、不能包含 / \\ .. 等路径字符），请重新输入：");
-        }
-        System.out.println("请输入密码：");
-        String inputPassword = scanner.next();
+        String inputUserId = scanner.next();
         File userFolder = new File("src/customerInformation/" + inputUserId);
-        Customer loaded = Tools.readCustomerInformationFromFolder(userFolder);
-        if (loaded == null) {
-            System.out.println("该用户不存在，请先完成注册！");
-            return false;
-        }
-        if (loaded.isLocked()) {
-            System.out.println("账户已锁定（密码连续错误3次），请联系管理员重置密码！");
-            return false;
-        }
-        if (loaded.getPassword() != null && loaded.getPassword().equals(inputPassword)) {
-            // 登录成功：清零连续失败次数并落盘
-            if (loaded.getFailedLoginCount() > 0) {
-                loaded.setFailedLoginCount(0);
-                Tools.writeCustomerInformationToFile(loaded, "src/customerInformation/" + inputUserId);
+        while (true) {
+            System.out.println("请输入密码：");
+            String inputPassword = scanner.next();
+            Customer loaded = Tools.readCustomerInformationFromFolder(userFolder);
+            if (loaded == null) {
+                System.out.println("该用户不存在，请先完成注册！");
+                this.lastLoginLocked = false;
+                return false;
             }
-            user.setUserId(loaded.getUserId());
-            user.setUserName(loaded.getUserName());
-            user.setPassword(loaded.getPassword());
-            user.setUserPhoneNumber(loaded.getUserPhoneNumber());
-            if (user instanceof Customer) {
-                Customer customer = (Customer) user;
-                customer.setEmail(loaded.getEmail());
-                customer.setRegisterTime(loaded.getRegisterTime());
-                customer.setLevel(loaded.getLevel());
-                customer.setTotalSpent(loaded.getTotalSpent());
-                customer.setFailedLoginCount(loaded.getFailedLoginCount());
-                customer.setLocked(loaded.isLocked());
-                // 恢复上次退出前未结算的购物车
-                ShoppingCart cart = Tools.readShoppingCartFromFolder(userFolder);
-                if (cart != null) {
-                    customer.setShoppingCart(cart);
+            if (loaded.isLocked()) {
+                System.out.println("账户已锁定（密码连续错误3次），请联系管理员重置密码！");
+                this.lastLoginLocked = true;
+                return false;
+            }
+            if (loaded.getPassword() != null && loaded.getPassword().equals(inputPassword)) {
+                this.lastLoginLocked = false;
+                if (loaded.getFailedLoginCount() > 0) {
+                    loaded.setFailedLoginCount(0);
+                    Tools.writeCustomerInformationToFile(loaded, "src/customerInformation/" + inputUserId);
                 }
-            }
-            System.out.println("登录成功！");
-            return true;
-        } else {
-            // 密码错误：连续失败次数+1，达到3次锁定账户
-            int failed = loaded.getFailedLoginCount() + 1;
-            loaded.setFailedLoginCount(failed);
-            if (failed >= 3) {
-                loaded.setLocked(true);
-                System.out.println("密码连续错误3次，账户已锁定，请联系管理员重置密码！");
+                user.setUserId(loaded.getUserId());
+                user.setUserName(loaded.getUserName());
+                user.setPassword(loaded.getPassword());
+                user.setUserPhoneNumber(loaded.getUserPhoneNumber());
+                if (user instanceof Customer) {
+                    Customer customer = (Customer) user;
+                    customer.setEmail(loaded.getEmail());
+                    customer.setRegisterTime(loaded.getRegisterTime());
+                    customer.setLevel(loaded.getLevel());
+                    customer.setTotalSpent(loaded.getTotalSpent());
+                    customer.setFailedLoginCount(loaded.getFailedLoginCount());
+                    customer.setLocked(loaded.isLocked());
+                }
+                System.out.println("登录成功！");
+                return true;
             } else {
-                System.out.println("密码错误，登录失败！您还有 " + (3 - failed) + " 次机会");
+                int failed = loaded.getFailedLoginCount() + 1;
+                loaded.setFailedLoginCount(failed);
+                if (failed >= 3) {
+                    loaded.setLocked(true);
+                    this.lastLoginLocked = true;
+                    Tools.writeCustomerInformationToFile(loaded, "src/customerInformation/" + inputUserId);
+                    System.out.println("密码连续错误3次，账户已锁定，请联系管理员重置密码！");
+                    return false;
+                }
+                Tools.writeCustomerInformationToFile(loaded, "src/customerInformation/" + inputUserId);
+                System.out.println("密码错误，登录失败！您还有 " + (3 - failed) + " 次机会，请重新输入密码：");
             }
-            Tools.writeCustomerInformationToFile(loaded, "src/customerInformation/" + inputUserId);
-            return false;
         }
     }
+
 }
 

@@ -208,9 +208,7 @@ public class ShoppingSystem {
                             }
                         }
                         else{
-                            System.out.println("登录失败");
-                            admin.logout();
-                            this.end();
+                            System.out.println("登录失败，请重新选择操作！");
                         }
                         break;
                     case 2:
@@ -290,30 +288,31 @@ public class ShoppingSystem {
                         }
                         else{
                             System.out.println("登录失败");
-                            System.out.println("您是否忘记密码？（1. 是 2. 否）");
-                            int choice = 0;
-                            while(true) {
-                                try{
-                                    choice = sc.nextInt();
-                                    if(choice == 1 || choice == 2 ) {
-                                        break;
+                            if (customer.isLastLoginLocked()) {
+                                System.out.println("您是否忘记密码？（1. 是 2. 否）");
+                                int choice = 0;
+                                while(true) {
+                                    try{
+                                        choice = sc.nextInt();
+                                        if(choice == 1 || choice == 2 ) {
+                                            break;
+                                        }
+                                        else {
+                                            System.out.println("请输入1-2之间的数字！");
+                                        }
                                     }
-                                    else {
+                                    catch(Exception e){
                                         System.out.println("请输入1-2之间的数字！");
+                                        sc.nextLine();
+                                        continue;
                                     }
                                 }
-                                catch(Exception e){
-                                    System.out.println("请输入1-2之间的数字！");
-                                    sc.nextLine();
-                                    continue;
+                                if(choice == 1){
+                                    customer.resetPassword();
                                 }
-                            }
-                            if(choice == 1){
-                                customer.resetPassword();
-                                break;
-                            }
-                            else{
-                                this.end();
+                                else{
+                                    System.out.println("已返回主界面。");
+                                }
                             }
                         }
                         break;

@@ -386,7 +386,11 @@ public class Admin extends User {
             int i;
             for (; true; ) {
                 System.out.println("请输入商品名称：");
-                String goodName = sc.next();
+                String goodName;
+                do {
+                    goodName = sc.nextLine();
+                } while (goodName.trim().isEmpty());
+                goodName = goodName.trim();
                 for (i = 0; i < goodNumber; i++) {
                     if (goods[i].goodName.equals(goodName)) {
                         for (; true; ) {
@@ -395,7 +399,11 @@ public class Admin extends User {
                             switch (change) {
                                 case "1":
                                     System.out.println("请输入新的商品名称：");
-                                    goods[i].goodName = sc.next();
+                                    String newName;
+                                    do {
+                                        newName = sc.nextLine();
+                                    } while (newName.trim().isEmpty());
+                                    goods[i].goodName = newName.trim();
                                     break;
                                 case "2":
                                     String oldGoodId = goods[i].goodId;
@@ -426,7 +434,11 @@ public class Admin extends User {
                                     break;
                                 case "3":
                                     System.out.println("请输入新的商品生产者：");
-                                    goods[i].producer = sc.next();
+                                    String newProducer;
+                                    do {
+                                        newProducer = sc.nextLine();
+                                    } while (newProducer.trim().isEmpty());
+                                    goods[i].producer = newProducer.trim();
                                     break;
                                 case "4":
                                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -444,7 +456,11 @@ public class Admin extends User {
                                     break;
                                 case "5":
                                     System.out.println("请输入新的商品类型：");
-                                    goods[i].type = sc.next();
+                                    String newType;
+                                    do {
+                                        newType = sc.nextLine();
+                                    } while (newType.trim().isEmpty());
+                                    goods[i].type = newType.trim();
                                     break;
                                 case "6":
                                     System.out.println("请输入新的采购价格（必须大于0）：");
@@ -617,9 +633,17 @@ public class Admin extends User {
         Scanner sc = Tools.SCANNER;
         for (; true; ) {
             System.out.println("请输入商品名称（不输入请选择no）：");
-            String goodName = sc.next();
+            String goodName;
+            do {
+                goodName = sc.nextLine();
+            } while (goodName.trim().isEmpty());
+            goodName = goodName.trim();
             System.out.println("请输入生产厂家（不输入请选择no）：");
-            String producer = sc.next();
+            String producer;
+            do {
+                producer = sc.nextLine();
+            } while (producer.trim().isEmpty());
+            producer = producer.trim();
             System.out.println("请输入零售价格下限（不输入请选择0）：");
             double retailPrice = 0;
             while(true) {
