@@ -707,7 +707,7 @@ public class Admin extends User {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeAdminToFile(
                                     "src/adminInformation/" + this.getUserId(),
-                                    this.getUserId() + "_information.txt",
+                                    this.getUserId() + "_information.dat",
                                     this.getUserName(),
                                     this.getUserId(),
                                     this.getPassword()
@@ -769,7 +769,7 @@ public class Admin extends User {
         String inputPassword = scanner.next();
         user.setPassword(inputPassword);
         String folderPath = "src/adminInformation/" + getUserId();
-        String fileName = inputUserId + "_information.txt";
+        String fileName = inputUserId + "_information.dat";
         String[] adminInfo = Tools.readAdminFromFile(folderPath, fileName);
         if (adminInfo == null) {
             System.out.println("该管理员不存在！");
