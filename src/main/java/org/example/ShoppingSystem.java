@@ -343,4 +343,3 @@ public class ShoppingSystem {
         System.exit(0);
     }
 }
-
