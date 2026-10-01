@@ -1,7 +1,6 @@
 package org.example;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -9,13 +8,6 @@ import java.util.Scanner;
 public class Tools {
 
     public static final Scanner SCANNER = new Scanner(System.in);
-
-    private static String readLabelValue(String line, String label) {
-        if (line != null && line.startsWith(label)) {
-            return line.substring(label.length()).trim();
-        }
-        return null;
-    }
 
     public static boolean isValidUserName(String name) {
         if (name == null || name.isEmpty() || name.length() < 5 || name.length() > 20) {
@@ -57,28 +49,10 @@ public class Tools {
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File infoFile = new File(folder, "customer_information.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(infoFile, StandardCharsets.UTF_8))) {
-            bw.write("用户名：" + (customer.getUserName() == null ? "" : customer.getUserName()));
-            bw.newLine();
-            bw.write("用户ID：" + (customer.getUserId() == null ? "" : customer.getUserId()));
-            bw.newLine();
-            bw.write("手机号：" + (customer.getUserPhoneNumber() == null ? "" : customer.getUserPhoneNumber()));
-            bw.newLine();
-            bw.write("邮箱：" + (customer.getEmail() == null ? "" : customer.getEmail()));
-            bw.newLine();
-            bw.write("密码：" + (customer.getPassword() == null ? "" : customer.getPassword()));
-            bw.newLine();
-            bw.write("注册时间：" + (customer.getRegisterTime() == null ? "" : customer.getRegisterTime()));
-            bw.newLine();
-            bw.write("等级：" + (customer.getLevel() == null ? "" : customer.getLevel()));
-            bw.newLine();
-            bw.write("总花费：" + customer.getTotalSpent());
-            bw.newLine();
-            bw.write("登录失败次数：" + customer.getFailedLoginCount());
-            bw.newLine();
-            bw.write("账户锁定：" + (customer.isLocked() ? "是" : "否"));
-            bw.newLine();
+        File infoFile = new File(folder, "customer_information.dat");
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(infoFile))) {
+            oos.writeObject(customer);
+            oos.flush();
             return true;
         } catch (IOException e) {
             System.out.println("客户信息保存失败：" + e.getMessage());
@@ -87,46 +61,18 @@ public class Tools {
     }
 
     public static Customer readCustomerInformationFromFolder(File folder) {
-        File infoFile = new File(folder, "customer_information.txt");
+        File infoFile = new File(folder, "customer_information.dat");
         if (!infoFile.exists()) {
             return null;
         }
-        Customer customer = new Customer();
-        try (BufferedReader br = new BufferedReader(new FileReader(infoFile, StandardCharsets.UTF_8))) {
-            String name = "", id = "", phone = "", email = "", pwd = "", registerTime = "", level = "";
-            double totalSpent = 0;
-            int failedLoginCount = 0;
-            boolean locked = false;
-            String line;
-            while ((line = br.readLine()) != null) {
-                String v;
-                if ((v = readLabelValue(line, "用户名：")) != null) name = v;
-                else if ((v = readLabelValue(line, "用户ID：")) != null) id = v;
-                else if ((v = readLabelValue(line, "手机号：")) != null) phone = v;
-                else if ((v = readLabelValue(line, "邮箱：")) != null) email = v;
-                else if ((v = readLabelValue(line, "密码：")) != null) pwd = v;
-                else if ((v = readLabelValue(line, "注册时间：")) != null) registerTime = v;
-                else if ((v = readLabelValue(line, "等级：")) != null) level = v;
-                else if ((v = readLabelValue(line, "总花费：")) != null) {
-                    try { totalSpent = Double.parseDouble(v); } catch (NumberFormatException e) { totalSpent = 0; }
-                }
-                else if ((v = readLabelValue(line, "登录失败次数：")) != null) {
-                    try { failedLoginCount = Integer.parseInt(v); } catch (NumberFormatException e) { failedLoginCount = 0; }
-                }
-                else if ((v = readLabelValue(line, "账户锁定：")) != null) locked = "是".equals(v);
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(infoFile))) {
+            Object obj = ois.readObject();
+            if (obj instanceof Customer) {
+                return (Customer) obj;
             }
-            customer.setUserName(name);
-            customer.setUserId(id);
-            customer.setUserPhoneNumber(phone);
-            customer.setEmail(email);
-            customer.setPassword(pwd);
-            customer.setRegisterTime(registerTime);
-            customer.setLevel(level);
-            customer.setTotalSpent(totalSpent);
-            customer.setFailedLoginCount(failedLoginCount);
-            customer.setLocked(locked);
-            return customer;
-        } catch (IOException e) {
+            System.out.println("客户【" + folder.getName() + "】数据文件格式异常，已跳过");
+            return null;
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("加载客户【" + folder.getName() + "】失败：" + e.getMessage());
             return null;
         }
@@ -160,14 +106,13 @@ public class Tools {
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File file = new File(folder, "shopping_history.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
-            bw.write("========== 购物历史记录 ==========");
-            bw.newLine();
-            bw.write("商品名称 | 数量 | 金额");
-            bw.newLine();
-            bw.write("----------------------------------");
-            bw.newLine();
+        File file = new File(folder, "shopping_history.dat");
+        if (file.exists()) {
+            return true;
+        }
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeObject(new ArrayList<String>());
+            oos.flush();
             return true;
         } catch (IOException e) {
             System.out.println("初始化购物历史失败：" + e.getMessage());
@@ -178,12 +123,25 @@ public class Tools {
     public static boolean appendShoppingHistory(String folderPath, String record) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, "shopping_history.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8, true))) {
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
-            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            bw.write("[" + now.format(fmt) + "] " + record);
-            bw.newLine();
+        File file = new File(folder, "shopping_history.dat");
+        List<String> history = new ArrayList<>();
+        if (file.exists()) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                Object obj = ois.readObject();
+                if (obj instanceof List) {
+                    history = (List<String>) obj;
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("读取购物历史失败，将重建历史文件：" + e.getMessage());
+                history = new ArrayList<>();
+            }
+        }
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        history.add("[" + now.format(fmt) + "] " + record);
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeObject(history);
+            oos.flush();
             return true;
         } catch (IOException e) {
             System.out.println("写入购物历史失败：" + e.getMessage());
@@ -193,14 +151,15 @@ public class Tools {
 
     public static List<String> readShoppingHistory(String folderPath) {
         List<String> history = new ArrayList<>();
-        File file = new File(folderPath, "shopping_history.txt");
+        File file = new File(folderPath, "shopping_history.dat");
         if (!file.exists()) return history;
-        try (BufferedReader br = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                history.add(line);
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            Object obj = ois.readObject();
+            if (obj instanceof List) {
+                return (List<String>) obj;
             }
-        } catch (IOException e) {
+            System.out.println("购物历史文件格式异常，已按空历史处理");
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("读取购物历史失败：" + e.getMessage());
         }
         return history;
@@ -209,24 +168,10 @@ public class Tools {
     public static boolean writeGoodsInformationToFile(Good good, String folderPath) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
-        File infoFile = new File(folder, "goods_information.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(infoFile, StandardCharsets.UTF_8))) {
-            bw.write("商品名称：" + (good.goodName == null ? "" : good.goodName));
-            bw.newLine();
-            bw.write("商品编号：" + (good.goodId == null ? "" : good.goodId));
-            bw.newLine();
-            bw.write("生产者：" + (good.producer == null ? "" : good.producer));
-            bw.newLine();
-            bw.write("生产时间：" + (good.produceTime == null ? "" : good.produceTime));
-            bw.newLine();
-            bw.write("类型：" + (good.type == null ? "" : good.type));
-            bw.newLine();
-            bw.write("采购价格：" + good.purchasePrice);
-            bw.newLine();
-            bw.write("零售价格：" + good.retailPrice);
-            bw.newLine();
-            bw.write("数量：" + good.number);
-            bw.newLine();
+        File infoFile = new File(folder, "goods_information.dat");
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(infoFile))) {
+            oos.writeObject(good);
+            oos.flush();
             return true;
         } catch (IOException e) {
             System.out.println("商品信息保存失败：" + e.getMessage());
@@ -235,31 +180,16 @@ public class Tools {
     }
 
     public static Good readGoodsInformationFromFolder(File folder) {
-        File infoFile = new File(folder, "goods_information.txt");
+        File infoFile = new File(folder, "goods_information.dat");
         if (!infoFile.exists()) return null;
-        Good good = new Good();
-        try (BufferedReader br = new BufferedReader(new FileReader(infoFile, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String v;
-                if ((v = readLabelValue(line, "商品名称：")) != null) good.goodName = v;
-                else if ((v = readLabelValue(line, "商品编号：")) != null) good.goodId = v;
-                else if ((v = readLabelValue(line, "生产者：")) != null) good.producer = v;
-                else if ((v = readLabelValue(line, "生产时间：")) != null) good.produceTime = v;
-                else if ((v = readLabelValue(line, "类型：")) != null) good.type = v;
-                else if ((v = readLabelValue(line, "采购价格：")) != null) {
-                    try { good.purchasePrice = Double.parseDouble(v); } catch (NumberFormatException e) { good.purchasePrice = 0; }
-                }
-                else if ((v = readLabelValue(line, "零售价格：")) != null) {
-                    try { good.retailPrice = Double.parseDouble(v); } catch (NumberFormatException e) { good.retailPrice = 0; }
-                }
-                else if ((v = readLabelValue(line, "数量：")) != null) {
-                    try { good.number = Integer.parseInt(v); } catch (NumberFormatException e) { good.number = 0; }
-                }
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(infoFile))) {
+            Object obj = ois.readObject();
+            if (obj instanceof Good) {
+                return (Good) obj;
             }
-            if (good.goodId == null) good.goodId = folder.getName();
-            return good;
-        } catch (IOException e) {
+            System.out.println("商品【" + folder.getName() + "】数据文件格式异常，已跳过");
+            return null;
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("加载商品【" + folder.getName() + "】失败：" + e.getMessage());
             return null;
         }
@@ -286,13 +216,9 @@ public class Tools {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
         File file = new File(folder, fileName);
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
-            bw.write("用户名：" + (name == null ? "" : name));
-            bw.newLine();
-            bw.write("用户ID：" + (id == null ? "" : id));
-            bw.newLine();
-            bw.write("密码：" + (pwd == null ? "" : pwd));
-            bw.newLine();
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeObject(new String[]{name == null ? "" : name, id == null ? "" : id, pwd == null ? "" : pwd});
+            oos.flush();
             return true;
         } catch (IOException e) {
             System.out.println("管理员信息保存失败：" + e.getMessage());
@@ -303,73 +229,22 @@ public class Tools {
     public static String[] readAdminFromFile(String folderPath, String fileName) {
         File file = new File(folderPath, fileName);
         if (!file.exists()) return null;
-        String name = "", id = "", pwd = "";
-        try (BufferedReader br = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String v;
-                if ((v = readLabelValue(line, "用户名：")) != null) name = v;
-                else if ((v = readLabelValue(line, "用户ID：")) != null) id = v;
-                else if ((v = readLabelValue(line, "密码：")) != null) pwd = v;
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            Object obj = ois.readObject();
+            if (obj instanceof String[]) {
+                String[] arr = (String[]) obj;
+                if (arr.length < 3) {
+                    System.out.println("管理员数据文件格式异常");
+                    return null;
+                }
+                return arr;
             }
-            return new String[]{name, id, pwd};
-        } catch (IOException e) {
+            System.out.println("管理员数据文件格式异常");
+            return null;
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("读取管理员信息失败：" + e.getMessage());
             return null;
         }
-    }
-
-    public static boolean writeShoppingCartToFile(String folderPath, ShoppingCart cart) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, "shopping_cart.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
-            for (int i = 0; i < cart.numberOfGoods; i++) {
-                Good g = cart.goods[i];
-                if (g == null || g.goodId == null) continue;
-                bw.write(g.goodId + ":" + g.number);
-                bw.newLine();
-            }
-            return true;
-        } catch (IOException e) {
-            System.out.println("购物车保存失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static ShoppingCart readShoppingCartFromFolder(File folder) {
-        ShoppingCart cart = new ShoppingCart();
-        File file = new File(folder, "shopping_cart.txt");
-        if (!file.exists()) return cart;
-        try (BufferedReader br = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))) {
-            String line;
-            int index = 0;
-            while ((line = br.readLine()) != null && index < cart.goods.length) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-                String[] parts = line.split(":");
-                if (parts.length != 2) continue;
-                String goodId = parts[0].trim();
-                int qty;
-                try { qty = Integer.parseInt(parts[1].trim()); } catch (NumberFormatException e) { continue; }
-                if (goodId.isEmpty() || qty <= 0) continue;
-                Good g = readGoodsInformationFromFolder(new File("src/gooodsInformation", goodId));
-                if (g == null) {
-                    System.out.println("购物车中的商品【" + goodId + "】已不存在，已跳过");
-                    continue;
-                }
-                if (qty > g.number) {
-                    System.out.println("商品【" + g.goodName + "】库存不足，已按当前库存 " + g.number + " 恢复");
-                    qty = g.number;
-                }
-                g.number = qty;
-                cart.goods[index++] = g;
-            }
-            cart.numberOfGoods = index;
-        } catch (IOException e) {
-            System.out.println("读取购物车失败：" + e.getMessage());
-        }
-        return cart;
     }
 
     public static void inputProductInformation(Good good){
@@ -597,4 +472,3 @@ public class Tools {
     }
 
 }
-
