@@ -1,6 +1,9 @@
 package org.example;
 
-public class Good {
+import java.io.Serializable;
+
+public class Good implements Serializable {
+    private static final long serialVersionUID = 1L;
     String goodName;
     String goodId;
     String producer;
@@ -30,4 +33,3 @@ public class Good {
         this.number = number;
     }
 }
-
