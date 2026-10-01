@@ -148,6 +148,7 @@ public class Admin extends User {
                 break;
             }
             boolean found = false;
+            // 同一用户名可能对应多个账号（用户名+手机号），所有匹配项都显示
             for (int i = 0; i < customerNumber; i++) {
                 if (customers[i].getUserId().equals(keyword) || customers[i].getUserName().equals(keyword)) {
                     found = true;
@@ -561,7 +562,7 @@ public class Admin extends User {
                     System.out.println("该商品不存在，请重新输入：");
                 }
                 else {
-                    break;
+                    continue;
                 }
             }
         }

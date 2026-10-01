@@ -17,7 +17,6 @@ public class Customer extends User {
     private boolean locked = false;
     private boolean lastLoginLocked = false;
 
-    // 反序列化时购物车不持久化，自动重建空购物车，避免空指针
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
         in.defaultReadObject();
         this.shoppingCart = new ShoppingCart();
