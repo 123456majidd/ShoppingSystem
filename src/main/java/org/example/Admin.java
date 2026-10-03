@@ -1,5 +1,6 @@
 package org.example;
 
+
 import java.io.*;
 import java.util.Scanner;
 
@@ -46,7 +47,7 @@ public class Admin extends User {
             userFolder.mkdirs();
             boolean saved = Tools.writeCustomerInformationToFile(customers[i], userFolderPath);
             if (!saved) {
-                System.out.println("客户【" + customers[i].getUserName() + "】信息保存失败，请检查磁盘空间与目录权限");
+                System.out.println("客户【" + customers[i].getUserName() + "】信息保存失败");
             }
             Tools.initShoppingHistory(userFolderPath);
         }
@@ -90,14 +91,13 @@ public class Admin extends User {
         }
         if (result==1) {
             customer.setPassword("ynuinfo#777");
-            // 重置密码同时解锁账户、清零连续失败次数
             customer.setFailedLoginCount(0);
             customer.setLocked(false);
             boolean saved = Tools.writeCustomerInformationToFile(customer, "src/customerInformation/" + customerId);
             if (saved) {
                 System.out.println("密码重置成功，账户已解锁");
             } else {
-                System.out.println("密码重置信息保存失败，请检查磁盘空间与目录权限");
+                System.out.println("密码重置信息保存失败");
             }
         } else {
             System.out.println("重置取消");
@@ -148,7 +148,6 @@ public class Admin extends User {
                 break;
             }
             boolean found = false;
-            // 同一用户名可能对应多个账号（用户名+手机号），所有匹配项都显示
             for (int i = 0; i < customerNumber; i++) {
                 if (customers[i].getUserId().equals(keyword) || customers[i].getUserName().equals(keyword)) {
                     found = true;
@@ -239,7 +238,7 @@ public class Admin extends User {
                 }
                 boolean folderDeleted = userFolder.delete();
                 if (folderDeleted) System.out.println("客户文件已全部清除");
-                else System.out.println("警告：客户文件夹删除失败，请手动检查目录");
+                else System.out.println("客户文件夹删除失败");
             }
             System.out.println("删除成功");
             break;
@@ -273,7 +272,7 @@ public class Admin extends User {
             String goodsFolderPath = "src/gooodsInformation/" + goods[i].goodId;
             boolean saved = Tools.writeGoodsInformationToFile(goods[i], goodsFolderPath);
             if (!saved) {
-                System.out.println("商品【" + goods[i].goodName + "】信息保存失败，请检查磁盘空间与目录权限");
+                System.out.println("商品【" + goods[i].goodName + "】信息保存失败");
             }
         }
         System.out.println("商品初始化完成");
@@ -324,14 +323,14 @@ public class Admin extends User {
                     Good[] newGoods = new Good[goods.length * 2];
                     System.arraycopy(goods, 0, newGoods, 0, goods.length);
                     goods = newGoods;
-                    System.out.println("商品容量已自动扩容至：" + goods.length);
+                    System.out.println("商品容量已扩容至：" + goods.length);
                 }
                 goods[goodNumber] = new Good();
                 Tools.inputProductInformation(goods[goodNumber]);
                 String goodsFolderPath = "src/gooodsInformation/" + goods[goodNumber].goodId;
                 boolean saved = Tools.writeGoodsInformationToFile(goods[goodNumber], goodsFolderPath);
                 if (!saved) {
-                    System.out.println("警告：商品【" + goods[goodNumber].goodName + "】信息保存失败，请检查磁盘空间与目录权限");
+                    System.out.println("警告：商品【" + goods[goodNumber].goodName + "】信息保存失败");
                 }
                 goodNumber++;
                 System.out.println("添加商品成功");
@@ -426,7 +425,7 @@ public class Admin extends User {
                                         }
                                         File oldFolder = new File("src/gooodsInformation/" + oldGoodId);
                                         if (oldFolder.exists() && !oldFolder.renameTo(newFolder)) {
-                                            System.out.println("商品目录重命名失败（可能被占用或权限不足），编号修改未生效，请重新输入：");
+                                            System.out.println("商品目录重命名失败（可能被占用），编号修改未生效，请重新输入：");
                                             continue;
                                         }
                                         goods[i].goodId = inputId;
@@ -530,7 +529,7 @@ public class Admin extends User {
                             System.out.println("改变成功");
                             boolean saved = Tools.writeGoodsInformationToFile(goods[i], "src/gooodsInformation/" + goods[i].goodId);
                             if (!saved) {
-                                System.out.println("警告：商品信息保存失败，请检查磁盘空间与目录权限");
+                                System.out.println("警告：商品信息保存失败");
                             }
                             System.out.println("是否要继续改变其他商品信息（1.是 2.否）：");
                             while (true) {
@@ -699,16 +698,16 @@ public class Admin extends User {
             System.out.println("请输入旧密码：");
             Scanner sc = Tools.SCANNER;
             String oldPassword = sc.next();
-            if (oldPassword.equals(this.getPassword())) {
+            if (Tools.hashPassword(oldPassword).equals(this.getPassword())) {
                 System.out.println("请输入新密码（密码长度大于8个字符，必须是大小写字母，数字和标点符号的组合）：");
                 for (; true; ) {
                     String newPassword = sc.next();
                     if (Tools.isValidPassword(newPassword)) {
-                        if (!this.getPassword().equals(newPassword)) {
+                        if (!this.getPassword().equals(Tools.hashPassword(newPassword))) {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeAdminToFile(
                                     "src/adminInformation/" + this.getUserId(),
-                                    this.getUserId() + "_information.dat",
+                                    this.getUserId() + "_information.xlsx",
                                     this.getUserName(),
                                     this.getUserId(),
                                     this.getPassword()
@@ -717,7 +716,7 @@ public class Admin extends User {
                                 System.out.println("密码修改成功");
                                 break;
                             } else {
-                                System.out.println("密码修改信息保存失败，请检查磁盘空间与目录权限，请重新输入新密码");
+                                System.out.println("密码修改信息保存失败，请重新输入新密码");
                             }
                         } else {
                             System.out.println("新密码不能与旧密码相同,请重新输入新密码");
@@ -741,9 +740,8 @@ public class Admin extends User {
             System.out.println("请输入管理员密码：");
             String adminPassword = scanner.next();
             if (adminPassword.equals("ynuinfo#777")) {
-                // 重置为默认管理员状态，保证每次用 admin 登录都会进入首次注册流程，行为一致
                 user.setUserName("admin");
-                user.setPassword("ynuinfo#777");
+                user.setPassword(Tools.hashPassword("ynuinfo#777"));
                 user.setUserId("admin12345678900");
                 user.setUserPhoneNumber("");
                 return true;
@@ -760,7 +758,7 @@ public class Admin extends User {
             if (inputUserPhoneNumber.matches("^1[3-9]\\d{9}$")) {
                 break;
             } else {
-                System.out.println("手机号格式错误，请输入11位有效的中国大陆手机号（例如：13812345678）！");
+                System.out.println("手机号格式错误，请输入11位有效的中国手机号！");
             }
         }
         user.setUserPhoneNumber(inputUserPhoneNumber);
@@ -768,16 +766,16 @@ public class Admin extends User {
         user.setUserId(inputUserId);
         System.out.println("请输入密码：");
         String inputPassword = scanner.next();
-        user.setPassword(inputPassword);
+        user.setPassword(Tools.hashPassword(inputPassword));
         String folderPath = "src/adminInformation/" + getUserId();
-        String fileName = inputUserId + "_information.dat";
+        String fileName = inputUserId + "_information.xlsx";
         String[] adminInfo = Tools.readAdminFromFile(folderPath, fileName);
         if (adminInfo == null) {
             System.out.println("该管理员不存在！");
             return false;
         }
         String filePassword = adminInfo[2];
-        if (filePassword != null && filePassword.equals(inputPassword)) {
+        if (filePassword != null && filePassword.equals(Tools.hashPassword(inputPassword))) {
             System.out.println("登录成功！");
             return true;
         } else {

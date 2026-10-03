@@ -1,5 +1,6 @@
 package org.example;
 
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,20 +8,14 @@ import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 public class Customer extends User {
-    private static final long serialVersionUID = 1L;
     private String level;
     private String registerTime;
     private double totalSpent;
     private String email;
-    private transient ShoppingCart shoppingCart = new ShoppingCart();
+    private ShoppingCart shoppingCart = new ShoppingCart();
     private int failedLoginCount = 0;
     private boolean locked = false;
     private boolean lastLoginLocked = false;
-
-    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
-        in.defaultReadObject();
-        this.shoppingCart = new ShoppingCart();
-    }
 
     public boolean isLastLoginLocked() {
         return lastLoginLocked;
@@ -90,7 +85,7 @@ public class Customer extends User {
                 this.setUserName(name);
                 break;
             }
-            System.out.println("用户名不合法：不能为空、不能含空格或 / \\ : * ? \" < > | 等字符，长度不超过20，请重新输入：");
+            System.out.println("用户名不合法：不能为空、不能含字符，长度不少于5个字符，请重新输入：");
         }
         while (true) {
             System.out.println("请输入您的手机号：");
@@ -100,7 +95,7 @@ public class Customer extends User {
                 break;
             }
             else {
-                System.out.println("手机号格式错误，请输入11位有效的中国大陆手机号（例如：13812345678）！");
+                System.out.println("手机号格式错误，请输入11位有效的中国手机号！");
             }
         }
         while (true) {
@@ -151,7 +146,7 @@ public class Customer extends User {
         }
         boolean saved = Tools.writeCustomerInformationToFile(this, userFolderPath);
         if (!saved) {
-            System.out.println("客户信息保存失败（请检查磁盘空间与目录权限），注册未完成");
+            System.out.println("客户信息保存失败，注册未完成，请重新注册！");
             File[] fs = userFolder.listFiles();
             if (fs != null) {
                 for (File f : fs) f.delete();
@@ -217,7 +212,7 @@ public class Customer extends User {
         if (saved) {
             System.out.println("系统已生成随机密码并发送到您的注册邮箱 " + matched.getEmail() + "，请使用该密码登录！");
         } else {
-            System.out.println("密码重置信息保存失败，请检查磁盘空间与目录权限！");
+            System.out.println("密码重置信息保存失败，请重新尝试！");
         }
     }
 
@@ -354,7 +349,7 @@ public class Customer extends User {
                             continue;
                         }
                         if (number > stock.number) {
-                            System.out.println("库存不足，当前库存：" + stock.number + "，修改未生效，请重新输入数量：");
+                            System.out.println("库存不足，当前库存：" + stock.number + "，修改失败，请重新输入数量：");
                             continue;
                         }
                         this.shoppingCart.goods[i].number = number;
@@ -578,7 +573,7 @@ public class Customer extends User {
                             }
                             Tools.writeGoodsInformationToFile(stock, "src/gooodsInformation/" + item.goodId);
                         } else {
-                            System.out.println("警告：商品【" + item.goodId + "】不存在，无法扣减库存");
+                            System.out.println("警告：商品【" + item.goodId + "】不存在");
                         }
                     }
                     for (int i = 0; i < shoppingCart.numberOfGoods; i++) {
@@ -591,7 +586,7 @@ public class Customer extends User {
                     System.out.println("订单记录已成功写入购物历史！");
                     boolean customerSaved = Tools.writeCustomerInformationToFile(this, userFolderPath);
                     if (!customerSaved) {
-                        System.out.println("警告：客户总花费保存失败，请检查磁盘空间与目录权限");
+                        System.out.println("警告：总花费信息保存失败，请联系管理员！");
                     }
                     for (int i = 0; i < shoppingCart.numberOfGoods; i++) {
                         this.shoppingCart.goods[i] = null;
@@ -667,20 +662,20 @@ public class Customer extends User {
             String oldPassword;
             Scanner sc = Tools.SCANNER;
             oldPassword = sc.next();
-            if (oldPassword.equals(this.getPassword())) {
+            if (Tools.hashPassword(oldPassword).equals(this.getPassword())) {
                 System.out.println("请输入新密码（密码长度大于8个字符，必须是大小写字母，数字和标点符号的组合）：");
                 String newPassword;
                 for (; true; ) {
                     newPassword = sc.next();
                     if (Tools.isValidPassword(newPassword)) {
-                        if (!this.getPassword().equals(newPassword)) {
+                        if (!this.getPassword().equals(Tools.hashPassword(newPassword))) {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeCustomerInformationToFile(this, "src/customerInformation/" + this.getUserId());
                             if (saved) {
                                 System.out.println("密码修改成功");
                                 break;
                             } else {
-                                System.out.println("密码修改信息保存失败，请检查磁盘空间与目录权限，请重新输入新密码");
+                                System.out.println("密码修改信息保存失败，请重新输入新密码");
                             }
                         } else {
                             System.out.println("新密码不能与旧密码相同,请重新输入新密码");
@@ -715,7 +710,7 @@ public class Customer extends User {
                 this.lastLoginLocked = true;
                 return false;
             }
-            if (loaded.getPassword() != null && loaded.getPassword().equals(inputPassword)) {
+            if (loaded.getPassword() != null && loaded.getPassword().equals(Tools.hashPassword(inputPassword))) {
                 this.lastLoginLocked = false;
                 if (loaded.getFailedLoginCount() > 0) {
                     loaded.setFailedLoginCount(0);

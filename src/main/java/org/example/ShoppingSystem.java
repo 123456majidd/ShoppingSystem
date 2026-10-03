@@ -1,5 +1,6 @@
 package org.example;
 
+
 import java.io.*;
 import java.util.Scanner;
 
@@ -30,12 +31,12 @@ public class ShoppingSystem {
                 }
                 switch(loginChoice) {
                     case 1:
-                        if (!Tools.chioceIfContinue()) {
+                        if (!Tools.chooseIfContinue()) {
                             break;
                         }
                         if(admin.login(admin)){
                             System.out.println("管理员登录成功");
-                            if(admin.getUserName().equals("admin")&&admin.getPassword().equals("ynuinfo#777")){
+                            if(admin.getUserName().equals("admin")&&admin.getPassword().equals(Tools.hashPassword("ynuinfo#777"))){
                                 String userPhoneNumber = "";
                                 while (true) {
                                     System.out.println("请输入您的手机号：");
@@ -43,7 +44,7 @@ public class ShoppingSystem {
                                     if (userPhoneNumber.matches("^1[3-9]\\d{9}$")) {
                                         break;
                                     } else {
-                                        System.out.println("手机号格式错误，请输入11位有效的中国大陆手机号（例如：13812345678）！");
+                                        System.out.println("手机号格式错误，请输入11位有效的中国手机号！");
                                     }
                                 }
                                 admin.setUserPhoneNumber(userPhoneNumber);
@@ -54,7 +55,7 @@ public class ShoppingSystem {
                                     if (Tools.isValidUserName(userName)) {
                                         break;
                                     }
-                                    System.out.println("用户名不合法：不能为空、不能含空格或 / \\ : * ? \" < > | 等字符，长度不超过20，请重新输入：");
+                                    System.out.println("用户名不合法：不能为空、不能含字符，长度少于5个字符，请重新输入：");
                                 }
                                 admin.setUserName(userName);
                                 System.out.println("您的用户ID成功注册为："+userName+userPhoneNumber);
@@ -64,18 +65,18 @@ public class ShoppingSystem {
                                 if (!userFolder.exists()) {
                                     boolean createOk = userFolder.mkdirs();
                                     if (!createOk) {
-                                        System.out.println("管理员文件夹创建失败，请检查路径权限");
+                                        System.out.println("管理员文件夹创建失败");
                                         return;
                                     }
                                 }
                                 boolean adminSaved = Tools.writeAdminToFile(
                                         userFolderPath,
-                                        admin.getUserId() + "_information.dat",
+                                        admin.getUserId() + "_information.xlsx",
                                         admin.getUserName(),
                                         admin.getUserId(),
                                         admin.getPassword());
                                 if (!adminSaved) {
-                                    System.out.println("管理员信息未保存成功，请检查磁盘空间与目录权限后重新操作");
+                                    System.out.println("管理员信息未保存成功");
                                     return;
                                 }
                                 System.out.println("请修改您的密码（修改后请使用 新用户名 + 手机号 方式登录）：");
@@ -111,79 +112,79 @@ public class ShoppingSystem {
                                 }
                                 switch(choice) {
                                     case 1:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.initializeCustomers();
                                         break;
                                     case 2:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.initializeGoods();
                                         break;
                                     case 3:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.resetCustomerPassword();
                                         break;
                                     case 4:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.listCustomerInformation();
                                         break;
                                     case 5:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.checkCustomerInformation();
                                         break;
                                     case 6:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.deleteCustomerInformation();
                                         break;
                                     case 7:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.listGoodsInformation();
                                         break;
                                     case 8:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.addGood();
                                         break;
                                     case 9:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.changeGoodInformation();
                                         break;
                                     case 10:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.deleteGoodInformation();
                                         break;
                                     case 11:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.checkGoodInformation();
                                         break;
                                     case 12:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         admin.changePassword();
                                         break;
                                     case 13:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         this.end();
@@ -200,7 +201,7 @@ public class ShoppingSystem {
                         }
                         break;
                     case 2:
-                        if (!Tools.chioceIfContinue()) {
+                        if (!Tools.chooseIfContinue()) {
                             break;
                         }
                         if(customer.login(customer)){
@@ -227,43 +228,43 @@ public class ShoppingSystem {
                                 }
                                 switch(choice) {
                                     case 1:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.addGoodToShoppingCart();
                                         break;
                                     case 2:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.changeGoodToShoppingCart();
                                         break;
                                     case 3:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.deleteGoodFromShoppingCart();
                                         break;
                                     case 4:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.checkOutShoppingCart();
                                         break;
                                     case 5:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.checkShoppingHistory();
                                         break;
                                     case 6:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         customer.changePassword();
                                         break;
                                     case 7:
-                                        if (!Tools.chioceIfContinue()) {
+                                        if (!Tools.chooseIfContinue()) {
                                             break;
                                         }
                                         this.end();
@@ -305,13 +306,13 @@ public class ShoppingSystem {
                         }
                         break;
                     case 3:
-                        if (!Tools.chioceIfContinue()) {
+                        if (!Tools.chooseIfContinue()) {
                             break;
                         }
                         customer.register();
                         break;
                     case 4:
-                        if (!Tools.chioceIfContinue()) {
+                        if (!Tools.chooseIfContinue()) {
                             break;
                         }
                         customer.logout();
@@ -331,3 +332,4 @@ public class ShoppingSystem {
         System.exit(0);
     }
 }
+

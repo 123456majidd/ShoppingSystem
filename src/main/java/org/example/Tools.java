@@ -1,13 +1,353 @@
 package org.example;
 
+
 import java.io.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class Tools {
 
     public static final Scanner SCANNER = new Scanner(System.in);
+
+    private static String getCellStringValue(Cell cell) {
+        if (cell == null) return "";
+        switch (cell.getCellType()) {
+            case STRING: return cell.getStringCellValue();
+            case NUMERIC:
+                double d = cell.getNumericCellValue();
+                if (d == Math.floor(d) && !Double.isInfinite(d)) return String.valueOf((long) d);
+                return String.valueOf(d);
+            case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                try { return cell.getStringCellValue(); } catch (Exception e) { return String.valueOf(cell.getNumericCellValue()); }
+            default: return "";
+        }
+    }
+
+    private static void writeKeyValueSheet(Sheet sheet, String[][] kv) {
+        for (int i = 0; i < kv.length; i++) {
+            Row row = sheet.createRow(i);
+            row.createCell(0).setCellValue(kv[i][0]);
+            row.createCell(1).setCellValue(kv[i][1] == null ? "" : kv[i][1]);
+        }
+    }
+
+    private static Map<String, String> readKeyValueSheet(Sheet sheet) {
+        Map<String, String> map = new LinkedHashMap<>();
+        if (sheet == null) return map;
+        for (Row row : sheet) {
+            String key = getCellStringValue(row.getCell(0));
+            String value = getCellStringValue(row.getCell(1));
+            if (!key.isEmpty()) map.put(key, value);
+        }
+        return map;
+    }
+
+    private static XSSFWorkbook openOrCreateCustomerWorkbook(File file) throws IOException {
+        XSSFWorkbook wb;
+        if (file.exists()) {
+            try (FileInputStream fis = new FileInputStream(file)) {
+                wb = new XSSFWorkbook(fis);
+            }
+        } else {
+            wb = new XSSFWorkbook();
+        }
+        if (wb.getSheetIndex("购物历史") < 0) wb.createSheet("购物历史");
+        return wb;
+    }
+
+    private static void saveWorkbook(XSSFWorkbook wb, File file) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            wb.write(fos);
+        }
+    }
+
+    private static final String PASSWORD_SALT = "ShoppingSystemV3_2026";
+
+    public static String hashPassword(String password) {
+        if (password == null) return "";
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest((PASSWORD_SALT + password).getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            System.out.println("密码加密失败：" + e.getMessage());
+            return password;
+        }
+    }
+
+    public static boolean writeCustomerInformationToFile(Customer customer, String folderPath) {
+        File folder = new File(folderPath);
+        if (!folder.exists()) folder.mkdirs();
+        File infoFile = new File(folder, "customer_information.xlsx");
+        XSSFWorkbook wb = null;
+        try {
+            wb = openOrCreateCustomerWorkbook(infoFile);
+            int idx = wb.getSheetIndex("基本信息");
+            if (idx >= 0) wb.removeSheetAt(idx);
+            Sheet s1 = wb.createSheet("基本信息");
+            String[][] kv = {
+                    {"userName", customer.getUserName()},
+                    {"userId", customer.getUserId()},
+                    {"password", hashPassword(customer.getPassword())},
+                    {"userPhoneNumber", customer.getUserPhoneNumber()},
+                    {"level", customer.getLevel()},
+                    {"registerTime", customer.getRegisterTime()},
+                    {"totalSpent", String.valueOf(customer.getTotalSpent())},
+                    {"email", customer.getEmail()},
+                    {"failedLoginCount", String.valueOf(customer.getFailedLoginCount())},
+                    {"locked", String.valueOf(customer.isLocked())}
+            };
+            writeKeyValueSheet(s1, kv);
+            saveWorkbook(wb, infoFile);
+            return true;
+        } catch (Exception e) {
+            System.out.println("客户信息保存失败：" + e.getMessage());
+            return false;
+        } finally {
+            if (wb != null) try { wb.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    public static Customer readCustomerInformationFromFolder(File folder) {
+        File infoFile = new File(folder, "customer_information.xlsx");
+        if (!infoFile.exists()) return null;
+        try (FileInputStream fis = new FileInputStream(infoFile);
+             XSSFWorkbook wb = new XSSFWorkbook(fis)) {
+            Sheet sheet = wb.getSheet("基本信息");
+            if (sheet == null) {
+                System.out.println("客户【" + folder.getName() + "】Excel 缺少基本信息 Sheet，已跳过");
+                return null;
+            }
+            Map<String, String> m = readKeyValueSheet(sheet);
+            Customer c = new Customer();
+            c.setUserName(m.getOrDefault("userName", ""));
+            c.setUserId(m.getOrDefault("userId", ""));
+            c.setPassword(m.getOrDefault("password", ""));
+            c.setUserPhoneNumber(m.getOrDefault("userPhoneNumber", ""));
+            c.setLevel(m.getOrDefault("level", ""));
+            c.setRegisterTime(m.getOrDefault("registerTime", ""));
+            try { c.setTotalSpent(Double.parseDouble(m.getOrDefault("totalSpent", "0"))); }
+            catch (NumberFormatException e) { c.setTotalSpent(0); }
+            c.setEmail(m.getOrDefault("email", ""));
+            try { c.setFailedLoginCount(Integer.parseInt(m.getOrDefault("failedLoginCount", "0"))); }
+            catch (NumberFormatException e) { c.setFailedLoginCount(0); }
+            c.setLocked(Boolean.parseBoolean(m.getOrDefault("locked", "false")));
+            return c;
+        } catch (Exception e) {
+            System.out.println("加载客户【" + folder.getName() + "】失败：" + e.getMessage());
+            return null;
+        }
+    }
+
+    public static int loadAllCustomers(Customer[] customers, String rootPath) {
+        File rootDir = new File(rootPath);
+        if (!rootDir.exists() || !rootDir.isDirectory()) {
+            System.out.println("客户信息目录不存在：" + rootPath);
+            return 0;
+        }
+        File[] folders = rootDir.listFiles(File::isDirectory);
+        if (folders == null || folders.length == 0) {
+            System.out.println("暂无客户数据");
+            return 0;
+        }
+        int count = 0;
+        for (File folder : folders) {
+            if (count >= customers.length) break;
+            Customer c = readCustomerInformationFromFolder(folder);
+            if (c != null) {
+                customers[count] = c;
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static boolean initShoppingHistory(String folderPath) {
+        File folder = new File(folderPath);
+        if (!folder.exists()) folder.mkdirs();
+        File file = new File(folder, "customer_information.xlsx");
+        XSSFWorkbook wb = null;
+        try {
+            wb = openOrCreateCustomerWorkbook(file);
+            saveWorkbook(wb, file);
+            return true;
+        } catch (Exception e) {
+            System.out.println("初始化购物历史失败：" + e.getMessage());
+            return false;
+        } finally {
+            if (wb != null) try { wb.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    public static boolean appendShoppingHistory(String folderPath, String record) {
+        File folder = new File(folderPath);
+        if (!folder.exists()) folder.mkdirs();
+        File file = new File(folder, "customer_information.xlsx");
+        XSSFWorkbook wb = null;
+        try {
+            wb = openOrCreateCustomerWorkbook(file);
+            Sheet sheet = wb.getSheet("购物历史");
+            int lastRow = sheet.getLastRowNum();
+            Row row = sheet.createRow(lastRow + 1);
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            row.createCell(0).setCellValue("[" + now.format(fmt) + "] " + record);
+            saveWorkbook(wb, file);
+            return true;
+        } catch (Exception e) {
+            System.out.println("写入购物历史失败：" + e.getMessage());
+            return false;
+        } finally {
+            if (wb != null) try { wb.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    public static List<String> readShoppingHistory(String folderPath) {
+        List<String> history = new ArrayList<>();
+        File file = new File(folderPath, "customer_information.xlsx");
+        if (!file.exists()) return history;
+        try (FileInputStream fis = new FileInputStream(file);
+             XSSFWorkbook wb = new XSSFWorkbook(fis)) {
+            Sheet sheet = wb.getSheet("购物历史");
+            if (sheet == null) return history;
+            for (Row row : sheet) {
+                String rec = getCellStringValue(row.getCell(0));
+                if (!rec.isEmpty()) history.add(rec);
+            }
+        } catch (Exception e) {
+            System.out.println("读取购物历史失败：" + e.getMessage());
+        }
+        return history;
+    }
+
+    public static boolean writeGoodsInformationToFile(Good good, String folderPath) {
+        File folder = new File(folderPath);
+        if (!folder.exists()) folder.mkdirs();
+        File infoFile = new File(folder, "goods_information.xlsx");
+        try (XSSFWorkbook wb = new XSSFWorkbook();
+             FileOutputStream fos = new FileOutputStream(infoFile)) {
+            Sheet sheet = wb.createSheet("商品信息");
+            String[][] kv = {
+                    {"goodName", good.goodName},
+                    {"goodId", good.goodId},
+                    {"producer", good.producer},
+                    {"produceTime", good.produceTime},
+                    {"type", good.type},
+                    {"purchasePrice", String.valueOf(good.purchasePrice)},
+                    {"retailPrice", String.valueOf(good.retailPrice)},
+                    {"number", String.valueOf(good.number)}
+            };
+            writeKeyValueSheet(sheet, kv);
+            wb.write(fos);
+            return true;
+        } catch (Exception e) {
+            System.out.println("商品信息保存失败：" + e.getMessage());
+            return false;
+        }
+    }
+
+    public static Good readGoodsInformationFromFolder(File folder) {
+        File infoFile = new File(folder, "goods_information.xlsx");
+        if (!infoFile.exists()) return null;
+        try (FileInputStream fis = new FileInputStream(infoFile);
+             XSSFWorkbook wb = new XSSFWorkbook(fis)) {
+            Sheet sheet = wb.getSheet("商品信息");
+            if (sheet == null) {
+                System.out.println("商品【" + folder.getName() + "】Excel 缺少商品信息 Sheet，已跳过");
+                return null;
+            }
+            Map<String, String> m = readKeyValueSheet(sheet);
+            Good g = new Good();
+            g.goodName = m.getOrDefault("goodName", "");
+            g.goodId = m.getOrDefault("goodId", "");
+            g.producer = m.getOrDefault("producer", "");
+            g.produceTime = m.getOrDefault("produceTime", "");
+            g.type = m.getOrDefault("type", "");
+            try { g.purchasePrice = Double.parseDouble(m.getOrDefault("purchasePrice", "0")); }
+            catch (NumberFormatException e) { g.purchasePrice = 0; }
+            try { g.retailPrice = Double.parseDouble(m.getOrDefault("retailPrice", "0")); }
+            catch (NumberFormatException e) { g.retailPrice = 0; }
+            try { g.number = Integer.parseInt(m.getOrDefault("number", "0")); }
+            catch (NumberFormatException e) { g.number = 0; }
+            return g;
+        } catch (Exception e) {
+            System.out.println("加载商品【" + folder.getName() + "】失败：" + e.getMessage());
+            return null;
+        }
+    }
+
+    public static int loadAllGoods(Good[] goods, String rootPath) {
+        File rootDir = new File(rootPath);
+        if (!rootDir.exists() || !rootDir.isDirectory()) return 0;
+        File[] folders = rootDir.listFiles(File::isDirectory);
+        if (folders == null || folders.length == 0) return 0;
+        int count = 0;
+        for (File folder : folders) {
+            if (count >= goods.length) break;
+            Good g = readGoodsInformationFromFolder(folder);
+            if (g != null) {
+                goods[count] = g;
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static boolean writeAdminToFile(String folderPath, String fileName, String name, String id, String pwd) {
+        File folder = new File(folderPath);
+        if (!folder.exists()) folder.mkdirs();
+        File file = new File(folder, fileName);
+        try (XSSFWorkbook wb = new XSSFWorkbook();
+             FileOutputStream fos = new FileOutputStream(file)) {
+            Sheet sheet = wb.createSheet("管理员信息");
+            String[][] kv = {
+                    {"name", name == null ? "" : name},
+                    {"id", id == null ? "" : id},
+                    {"pwd", hashPassword(pwd == null ? "" : pwd)}
+            };
+            writeKeyValueSheet(sheet, kv);
+            wb.write(fos);
+            return true;
+        } catch (Exception e) {
+            System.out.println("管理员信息保存失败：" + e.getMessage());
+            return false;
+        }
+    }
+
+    public static String[] readAdminFromFile(String folderPath, String fileName) {
+        File file = new File(folderPath, fileName);
+        if (!file.exists()) return null;
+        try (FileInputStream fis = new FileInputStream(file);
+             XSSFWorkbook wb = new XSSFWorkbook(fis)) {
+            Sheet sheet = wb.getSheet("管理员信息");
+            if (sheet == null) {
+                System.out.println("管理员数据文件格式异常");
+                return null;
+            }
+            Map<String, String> m = readKeyValueSheet(sheet);
+            String name = m.getOrDefault("name", "");
+            String id = m.getOrDefault("id", "");
+            String pwd = m.getOrDefault("pwd", "");
+            if (id.isEmpty()) {
+                System.out.println("管理员数据文件格式异常");
+                return null;
+            }
+            return new String[]{name, id, pwd};
+        } catch (Exception e) {
+            System.out.println("读取管理员信息失败：" + e.getMessage());
+            return null;
+        }
+    }
 
     public static boolean isValidUserName(String name) {
         if (name == null || name.isEmpty() || name.length() < 5 || name.length() > 20) {
@@ -42,209 +382,6 @@ public class Tools {
             arr[j] = t;
         }
         return new String(arr);
-    }
-
-    public static boolean writeCustomerInformationToFile(Customer customer, String folderPath) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-        File infoFile = new File(folder, "customer_information.dat");
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(infoFile))) {
-            oos.writeObject(customer);
-            oos.flush();
-            return true;
-        } catch (IOException e) {
-            System.out.println("客户信息保存失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static Customer readCustomerInformationFromFolder(File folder) {
-        File infoFile = new File(folder, "customer_information.dat");
-        if (!infoFile.exists()) {
-            return null;
-        }
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(infoFile))) {
-            Object obj = ois.readObject();
-            if (obj instanceof Customer) {
-                return (Customer) obj;
-            }
-            System.out.println("客户【" + folder.getName() + "】数据文件格式异常，已跳过");
-            return null;
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("加载客户【" + folder.getName() + "】失败：" + e.getMessage());
-            return null;
-        }
-    }
-
-    public static int loadAllCustomers(Customer[] customers, String rootPath) {
-        File rootDir = new File(rootPath);
-        if (!rootDir.exists() || !rootDir.isDirectory()) {
-            System.out.println("客户信息目录不存在：" + rootPath);
-            return 0;
-        }
-        File[] folders = rootDir.listFiles(File::isDirectory);
-        if (folders == null || folders.length == 0) {
-            System.out.println("暂无客户数据");
-            return 0;
-        }
-        int count = 0;
-        for (File folder : folders) {
-            if (count >= customers.length) break;
-            Customer c = readCustomerInformationFromFolder(folder);
-            if (c != null) {
-                customers[count] = c;
-                count++;
-            }
-        }
-        return count;
-    }
-
-    public static boolean initShoppingHistory(String folderPath) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-        File file = new File(folder, "shopping_history.dat");
-        if (file.exists()) {
-            return true;
-        }
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            oos.writeObject(new ArrayList<String>());
-            oos.flush();
-            return true;
-        } catch (IOException e) {
-            System.out.println("初始化购物历史失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static boolean appendShoppingHistory(String folderPath, String record) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, "shopping_history.dat");
-        List<String> history = new ArrayList<>();
-        if (file.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                Object obj = ois.readObject();
-                if (obj instanceof List) {
-                    history = (List<String>) obj;
-                }
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("读取购物历史失败，将重建历史文件：" + e.getMessage());
-                history = new ArrayList<>();
-            }
-        }
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        history.add("[" + now.format(fmt) + "] " + record);
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            oos.writeObject(history);
-            oos.flush();
-            return true;
-        } catch (IOException e) {
-            System.out.println("写入购物历史失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static List<String> readShoppingHistory(String folderPath) {
-        List<String> history = new ArrayList<>();
-        File file = new File(folderPath, "shopping_history.dat");
-        if (!file.exists()) return history;
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            Object obj = ois.readObject();
-            if (obj instanceof List) {
-                return (List<String>) obj;
-            }
-            System.out.println("购物历史文件格式异常，已按空历史处理");
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("读取购物历史失败：" + e.getMessage());
-        }
-        return history;
-    }
-
-    public static boolean writeGoodsInformationToFile(Good good, String folderPath) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) folder.mkdirs();
-        File infoFile = new File(folder, "goods_information.dat");
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(infoFile))) {
-            oos.writeObject(good);
-            oos.flush();
-            return true;
-        } catch (IOException e) {
-            System.out.println("商品信息保存失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static Good readGoodsInformationFromFolder(File folder) {
-        File infoFile = new File(folder, "goods_information.dat");
-        if (!infoFile.exists()) return null;
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(infoFile))) {
-            Object obj = ois.readObject();
-            if (obj instanceof Good) {
-                return (Good) obj;
-            }
-            System.out.println("商品【" + folder.getName() + "】数据文件格式异常，已跳过");
-            return null;
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("加载商品【" + folder.getName() + "】失败：" + e.getMessage());
-            return null;
-        }
-    }
-
-    public static int loadAllGoods(Good[] goods, String rootPath) {
-        File rootDir = new File(rootPath);
-        if (!rootDir.exists() || !rootDir.isDirectory()) return 0;
-        File[] folders = rootDir.listFiles(File::isDirectory);
-        if (folders == null || folders.length == 0) return 0;
-        int count = 0;
-        for (File folder : folders) {
-            if (count >= goods.length) break;
-            Good g = readGoodsInformationFromFolder(folder);
-            if (g != null) {
-                goods[count] = g;
-                count++;
-            }
-        }
-        return count;
-    }
-
-    public static boolean writeAdminToFile(String folderPath, String fileName, String name, String id, String pwd) {
-        File folder = new File(folderPath);
-        if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, fileName);
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            oos.writeObject(new String[]{name == null ? "" : name, id == null ? "" : id, pwd == null ? "" : pwd});
-            oos.flush();
-            return true;
-        } catch (IOException e) {
-            System.out.println("管理员信息保存失败：" + e.getMessage());
-            return false;
-        }
-    }
-
-    public static String[] readAdminFromFile(String folderPath, String fileName) {
-        File file = new File(folderPath, fileName);
-        if (!file.exists()) return null;
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            Object obj = ois.readObject();
-            if (obj instanceof String[]) {
-                String[] arr = (String[]) obj;
-                if (arr.length < 3) {
-                    System.out.println("管理员数据文件格式异常");
-                    return null;
-                }
-                return arr;
-            }
-            System.out.println("管理员数据文件格式异常");
-            return null;
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("读取管理员信息失败：" + e.getMessage());
-            return null;
-        }
     }
 
     public static void inputProductInformation(Good good){
@@ -362,7 +499,7 @@ public class Tools {
                 customer.setUserName(name);
                 break;
             }
-            System.out.println("用户名不合法：不能为空、不能含空格或 / \\ : * ? \" < > | 等字符，长度不超过20，请重新输入：");
+            System.out.println("用户名不合法：不能为空、不能含字符，长度不少于5个字符，请重新输入：");
         }
         while (true) {
             System.out.println("请输入该客户的手机号：");
@@ -451,7 +588,7 @@ public class Tools {
         return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
-    public static boolean chioceIfContinue() {
+    public static boolean chooseIfContinue() {
         Scanner sc = SCANNER;
         int chioce = 0;
         while(true){
@@ -476,3 +613,4 @@ public class Tools {
     }
 
 }
+
