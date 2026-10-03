@@ -84,10 +84,6 @@ public class Tools {
         }
     }
 
-    /**
-     * 写入文件前统一处理密码：明文才做 SHA-256 哈希；已是 64 位十六进制哈希则直接保存，
-     * 避免内存中已是哈希时再次哈希造成"双重哈希"导致密码失效。
-     */
     public static String toStoredPassword(String password) {
         if (password == null) return "";
         if (password.matches("^[0-9a-f]{64}$")) return password;
