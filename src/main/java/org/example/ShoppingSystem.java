@@ -36,7 +36,7 @@ public class ShoppingSystem {
                         }
                         if(admin.login(admin)){
                             System.out.println("管理员登录成功");
-                            if(admin.getUserName().equals("admin")&&admin.getPassword().equals(Tools.hashPassword("ynuinfo#777"))){
+                            if(admin.getUserName().equals("admin")&&admin.getPassword().equals("ynuinfo#777")){
                                 String userPhoneNumber = "";
                                 while (true) {
                                     System.out.println("请输入您的手机号：");

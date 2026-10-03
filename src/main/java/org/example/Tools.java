@@ -84,6 +84,16 @@ public class Tools {
         }
     }
 
+    /**
+     * 写入文件前统一处理密码：明文才做 SHA-256 哈希；已是 64 位十六进制哈希则直接保存，
+     * 避免内存中已是哈希时再次哈希造成"双重哈希"导致密码失效。
+     */
+    public static String toStoredPassword(String password) {
+        if (password == null) return "";
+        if (password.matches("^[0-9a-f]{64}$")) return password;
+        return hashPassword(password);
+    }
+
     public static boolean writeCustomerInformationToFile(Customer customer, String folderPath) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
@@ -99,7 +109,7 @@ public class Tools {
             String[][] kv = {
                     {"userName", customer.getUserName()},
                     {"userId", customer.getUserId()},
-                    {"password", hashPassword(customer.getPassword())},
+                    {"password", toStoredPassword(customer.getPassword())},
                     {"userPhoneNumber", customer.getUserPhoneNumber()},
                     {"level", customer.getLevel()},
                     {"registerTime", customer.getRegisterTime()},
@@ -349,7 +359,7 @@ public class Tools {
                     {"name", name == null ? "" : name},
                     {"id", id == null ? "" : id},
                     {"phone", phone == null ? "" : phone},
-                    {"pwd", hashPassword(pwd == null ? "" : pwd)}
+                    {"pwd", toStoredPassword(pwd)}
             };
             writeKeyValueSheet(sheet, kv);
             wb.write(fos);

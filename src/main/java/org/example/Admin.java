@@ -698,12 +698,17 @@ public class Admin extends User {
             System.out.println("请输入旧密码：");
             Scanner sc = Tools.SCANNER;
             String oldPassword = sc.next();
-            if (Tools.hashPassword(oldPassword).equals(this.getPassword())) {
+            String storedPassword = this.getPassword();
+            boolean oldPasswordOk = Tools.hashPassword(oldPassword).equals(storedPassword)
+                    || oldPassword.equals(storedPassword);
+            if (oldPasswordOk) {
                 System.out.println("请输入新密码（密码长度大于8个字符，必须是大小写字母，数字和标点符号的组合）：");
                 for (; true; ) {
                     String newPassword = sc.next();
                     if (Tools.isValidPassword(newPassword)) {
-                        if (!this.getPassword().equals(Tools.hashPassword(newPassword))) {
+                        boolean sameAsOld = Tools.hashPassword(newPassword).equals(storedPassword)
+                                || newPassword.equals(storedPassword);
+                        if (!sameAsOld) {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeAdminToFile(
                                     "src/adminInformation/" + this.getUserId(),
@@ -742,7 +747,7 @@ public class Admin extends User {
             String adminPassword = scanner.next();
             if (adminPassword.equals("ynuinfo#777")) {
                 user.setUserName("admin");
-                user.setPassword(Tools.hashPassword("ynuinfo#777"));
+                user.setPassword(adminPassword);
                 user.setUserId("admin12345678900");
                 user.setUserPhoneNumber("");
                 return true;
@@ -767,7 +772,7 @@ public class Admin extends User {
         user.setUserId(inputUserId);
         System.out.println("请输入密码：");
         String inputPassword = scanner.next();
-        user.setPassword(Tools.hashPassword(inputPassword));
+        user.setPassword(inputPassword);
         String folderPath = "src/adminInformation/" + getUserId();
         String fileName = inputUserId + "_information.xlsx";
         String[] adminInfo = Tools.readAdminFromFile(folderPath, fileName);

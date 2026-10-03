@@ -662,13 +662,18 @@ public class Customer extends User {
             String oldPassword;
             Scanner sc = Tools.SCANNER;
             oldPassword = sc.next();
-            if (Tools.hashPassword(oldPassword).equals(this.getPassword())) {
+            String storedPassword = this.getPassword();
+            boolean oldPasswordOk = Tools.hashPassword(oldPassword).equals(storedPassword)
+                    || oldPassword.equals(storedPassword);
+            if (oldPasswordOk) {
                 System.out.println("请输入新密码（密码长度大于8个字符，必须是大小写字母，数字和标点符号的组合）：");
                 String newPassword;
                 for (; true; ) {
                     newPassword = sc.next();
                     if (Tools.isValidPassword(newPassword)) {
-                        if (!this.getPassword().equals(Tools.hashPassword(newPassword))) {
+                        boolean sameAsOld = Tools.hashPassword(newPassword).equals(storedPassword)
+                                || newPassword.equals(storedPassword);
+                        if (!sameAsOld) {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeCustomerInformationToFile(this, "src/customerInformation/" + this.getUserId());
                             if (saved) {
@@ -718,7 +723,7 @@ public class Customer extends User {
                 }
                 user.setUserId(loaded.getUserId());
                 user.setUserName(loaded.getUserName());
-                user.setPassword(loaded.getPassword());
+                user.setPassword(inputPassword);
                 user.setUserPhoneNumber(loaded.getUserPhoneNumber());
                 if (user instanceof Customer) {
                     Customer customer = (Customer) user;
@@ -748,3 +753,4 @@ public class Customer extends User {
     }
 
 }
+
