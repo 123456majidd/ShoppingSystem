@@ -1,6 +1,4 @@
 package org.example;
-
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,15 +108,8 @@ public class Customer extends User {
             }
         }
         this.setUserId(this.getUserName() + this.getUserPhoneNumber());
-        String userFolderPath = "src/customerInformation/" + this.getUserId();
-        File userFolder = new File(userFolderPath);
-        if (userFolder.exists()) {
+        if (Tools.customerExists(this.getUserId())) {
             System.out.println("该账号已存在，请登录！");
-            return;
-        }
-        boolean createFolderOk = userFolder.mkdirs();
-        if (!createFolderOk) {
-            System.out.println("账号创建失败，请检查权限后重试");
             return;
         }
         for (; true; ) {
@@ -144,17 +135,12 @@ public class Customer extends User {
                 System.out.println("日期格式错误，请严格按照 yyyy-MM-dd 的格式输入（例如：2026-09-19）！");
             }
         }
-        boolean saved = Tools.writeCustomerInformationToFile(this, userFolderPath);
+        boolean saved = Tools.writeCustomerInformationToFile(this, this.getUserId());
         if (!saved) {
             System.out.println("客户信息保存失败，注册未完成，请重新注册！");
-            File[] fs = userFolder.listFiles();
-            if (fs != null) {
-                for (File f : fs) f.delete();
-            }
-            userFolder.delete();
             return;
         }
-        Tools.initShoppingHistory(userFolderPath);
+        Tools.initShoppingHistory(this.getUserId());
         System.out.println("注册成功！");
     }
 
@@ -186,20 +172,7 @@ public class Customer extends User {
         String inputName = sc.next();
         System.out.println("请输入您的注册邮箱：");
         String inputEmail = sc.next();
-        File rootDir = new File("src/customerInformation");
-        File[] folders = rootDir.exists() ? rootDir.listFiles(File::isDirectory) : null;
-        Customer matched = null;
-        String matchedFolderPath = null;
-        if (folders != null) {
-            for (File folder : folders) {
-                Customer c = Tools.readCustomerInformationFromFolder(folder);
-                if (c != null && inputName.equals(c.getUserName()) && inputEmail.equals(c.getEmail())) {
-                    matched = c;
-                    matchedFolderPath = folder.getPath();
-                    break;
-                }
-            }
-        }
+        Customer matched = Tools.findCustomerByUserNameAndEmail(inputName, inputEmail);
         if (matched == null) {
             System.out.println("用户名或注册邮箱不匹配，未找到该账户！");
             return;
@@ -208,7 +181,7 @@ public class Customer extends User {
         matched.setPassword(newPassword);
         matched.setFailedLoginCount(0);
         matched.setLocked(false);
-        boolean saved = Tools.writeCustomerInformationToFile(matched, matchedFolderPath);
+        boolean saved = Tools.writeCustomerInformationToFile(matched, matched.getUserId());
         if (saved) {
             System.out.println("系统已生成随机密码并发送到您的注册邮箱 " + matched.getEmail() + "，请使用该密码登录！");
         } else {
@@ -753,4 +726,3 @@ public class Customer extends User {
     }
 
 }
-

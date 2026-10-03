@@ -1,6 +1,4 @@
 package org.example;
-
-
 import java.io.*;
 import java.util.Scanner;
 
@@ -60,18 +58,9 @@ public class ShoppingSystem {
                                 admin.setUserName(userName);
                                 System.out.println("您的用户ID成功注册为："+userName+userPhoneNumber);
                                 admin.setUserId(userName+userPhoneNumber);
-                                String userFolderPath = "src/adminInformation/" + admin.getUserId();
-                                File userFolder = new File(userFolderPath);
-                                if (!userFolder.exists()) {
-                                    boolean createOk = userFolder.mkdirs();
-                                    if (!createOk) {
-                                        System.out.println("管理员文件夹创建失败");
-                                        return;
-                                    }
-                                }
                                 boolean adminSaved = Tools.writeAdminToFile(
-                                        userFolderPath,
-                                        admin.getUserId() + "_information.xlsx",
+                                        "src/adminInformation/" + admin.getUserId(),
+                                        admin.getUserId() + "_information.db",
                                         admin.getUserName(),
                                         admin.getUserId(),
                                         admin.getUserPhoneNumber(),
@@ -333,4 +322,3 @@ public class ShoppingSystem {
         System.exit(0);
     }
 }
-

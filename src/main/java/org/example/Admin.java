@@ -1,6 +1,4 @@
 package org.example;
-
-
 import java.io.*;
 import java.util.Scanner;
 
@@ -42,14 +40,10 @@ public class Admin extends User {
         for (int i = 0; i < this.customerNumber; i++) {
             customers[i] = new Customer();
             Tools.inputCustomerInformation(customers[i]);
-            String userFolderPath = "src/customerInformation/" + customers[i].getUserId();
-            File userFolder = new File(userFolderPath);
-            userFolder.mkdirs();
-            boolean saved = Tools.writeCustomerInformationToFile(customers[i], userFolderPath);
+            boolean saved = Tools.writeCustomerInformationToFile(customers[i], customers[i].getUserId());
             if (!saved) {
                 System.out.println("客户【" + customers[i].getUserName() + "】信息保存失败");
             }
-            Tools.initShoppingHistory(userFolderPath);
         }
         System.out.println("客户初始化完成");
     }
@@ -230,15 +224,10 @@ public class Admin extends User {
             }
             customers[customerNumber - 1] = null;
             customerNumber--;
-            File userFolder = new File("src/customerInformation/" + customerId);
-            if (userFolder.exists()) {
-                File[] allFiles = userFolder.listFiles();
-                if (allFiles != null) {
-                    for (File file : allFiles) file.delete();
-                }
-                boolean folderDeleted = userFolder.delete();
-                if (folderDeleted) System.out.println("客户文件已全部清除");
-                else System.out.println("客户文件夹删除失败");
+            if (Tools.deleteCustomer(customerId)) {
+                System.out.println("客户及其购物历史记录已从数据库清除");
+            } else {
+                System.out.println("客户记录删除失败");
             }
             System.out.println("删除成功");
             break;
@@ -384,6 +373,7 @@ public class Admin extends User {
         }
         if (result==1) {
             int i;
+            String oldGoodId = null;
             for (; true; ) {
                 System.out.println("请输入商品名称：");
                 String goodName;
@@ -393,6 +383,7 @@ public class Admin extends User {
                 goodName = goodName.trim();
                 for (i = 0; i < goodNumber; i++) {
                     if (goods[i].goodName.equals(goodName)) {
+                        oldGoodId = null;
                         for (; true; ) {
                             System.out.println("请问要改变该商品的哪个信息（1.名称 2.编号 3.生产者 4.生产日期 5.类型 6.采购价 7.零售价 8.库存）：");
                             String change = sc.next();
@@ -406,7 +397,7 @@ public class Admin extends User {
                                     goods[i].goodName = newName.trim();
                                     break;
                                 case "2":
-                                    String oldGoodId = goods[i].goodId;
+                                    oldGoodId = goods[i].goodId;
                                     while (true) {
                                         System.out.println("请输入新的商品编号（格式：4位数字，比如0001）：");
                                         String inputId = sc.next();
@@ -418,14 +409,8 @@ public class Admin extends User {
                                             goods[i].goodId = inputId;
                                             break;
                                         }
-                                        File newFolder = new File("src/gooodsInformation/" + inputId);
-                                        if (newFolder.exists()) {
+                                        if (Tools.goodIdExists(inputId)) {
                                             System.out.println("编号 " + inputId + " 已存在，不能与现有商品编号冲突，请重新输入：");
-                                            continue;
-                                        }
-                                        File oldFolder = new File("src/gooodsInformation/" + oldGoodId);
-                                        if (oldFolder.exists() && !oldFolder.renameTo(newFolder)) {
-                                            System.out.println("商品目录重命名失败（可能被占用），编号修改未生效，请重新输入：");
                                             continue;
                                         }
                                         goods[i].goodId = inputId;
@@ -530,6 +515,9 @@ public class Admin extends User {
                             boolean saved = Tools.writeGoodsInformationToFile(goods[i], "src/gooodsInformation/" + goods[i].goodId);
                             if (!saved) {
                                 System.out.println("警告：商品信息保存失败");
+                            } else if (oldGoodId != null && !oldGoodId.equals(goods[i].goodId)) {
+                                Tools.deleteGood(oldGoodId);
+                                System.out.println("原编号 " + oldGoodId + " 的记录已同步更新为 " + goods[i].goodId);
                             }
                             System.out.println("是否要继续改变其他商品信息（1.是 2.否）：");
                             while (true) {
@@ -609,15 +597,10 @@ public class Admin extends User {
                 }
                 goods[goodNumber - 1] = null;
                 goodNumber--;
-                File goodFolder = new File("src/gooodsInformation/" + goodId);
-                if (goodFolder.exists()) {
-                    File[] allFiles = goodFolder.listFiles();
-                    if (allFiles != null) {
-                        for (File file : allFiles) {
-                            file.delete();
-                        }
-                    }
-                    goodFolder.delete();
+                if (Tools.deleteGood(goodId)) {
+                    System.out.println("商品已从数据库删除");
+                } else {
+                    System.out.println("商品记录删除失败");
                 }
                 System.out.println("删除成功");
                 break;
@@ -712,7 +695,7 @@ public class Admin extends User {
                             this.setPassword(newPassword);
                             boolean saved = Tools.writeAdminToFile(
                                     "src/adminInformation/" + this.getUserId(),
-                                    this.getUserId() + "_information.xlsx",
+                                    this.getUserId() + "_information.db",
                                     this.getUserName(),
                                     this.getUserId(),
                                     this.getUserPhoneNumber(),
@@ -774,7 +757,7 @@ public class Admin extends User {
         String inputPassword = scanner.next();
         user.setPassword(inputPassword);
         String folderPath = "src/adminInformation/" + getUserId();
-        String fileName = inputUserId + "_information.xlsx";
+        String fileName = inputUserId + "_information.db";
         String[] adminInfo = Tools.readAdminFromFile(folderPath, fileName);
         if (adminInfo == null) {
             System.out.println("该管理员不存在！");
@@ -790,4 +773,3 @@ public class Admin extends User {
         }
     }
 }
-
