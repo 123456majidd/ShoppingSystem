@@ -74,6 +74,7 @@ public class ShoppingSystem {
                                         admin.getUserId() + "_information.xlsx",
                                         admin.getUserName(),
                                         admin.getUserId(),
+                                        admin.getUserPhoneNumber(),
                                         admin.getPassword());
                                 if (!adminSaved) {
                                     System.out.println("管理员信息未保存成功");

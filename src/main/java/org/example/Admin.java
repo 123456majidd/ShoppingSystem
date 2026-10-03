@@ -710,6 +710,7 @@ public class Admin extends User {
                                     this.getUserId() + "_information.xlsx",
                                     this.getUserName(),
                                     this.getUserId(),
+                                    this.getUserPhoneNumber(),
                                     this.getPassword()
                             );
                             if (saved) {
@@ -774,7 +775,7 @@ public class Admin extends User {
             System.out.println("该管理员不存在！");
             return false;
         }
-        String filePassword = adminInfo[2];
+        String filePassword = adminInfo[3];
         if (filePassword != null && filePassword.equals(Tools.hashPassword(inputPassword))) {
             System.out.println("登录成功！");
             return true;
@@ -784,3 +785,4 @@ public class Admin extends User {
         }
     }
 }
+

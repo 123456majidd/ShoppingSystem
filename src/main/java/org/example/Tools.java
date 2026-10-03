@@ -303,7 +303,7 @@ public class Tools {
         return count;
     }
 
-    public static boolean writeAdminToFile(String folderPath, String fileName, String name, String id, String pwd) {
+    public static boolean writeAdminToFile(String folderPath, String fileName, String name, String id, String phone, String pwd) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
         File file = new File(folder, fileName);
@@ -313,6 +313,7 @@ public class Tools {
             String[][] kv = {
                     {"name", name == null ? "" : name},
                     {"id", id == null ? "" : id},
+                    {"phone", phone == null ? "" : phone},
                     {"pwd", hashPassword(pwd == null ? "" : pwd)}
             };
             writeKeyValueSheet(sheet, kv);
@@ -337,12 +338,13 @@ public class Tools {
             Map<String, String> m = readKeyValueSheet(sheet);
             String name = m.getOrDefault("name", "");
             String id = m.getOrDefault("id", "");
+            String phone = m.getOrDefault("phone", "");
             String pwd = m.getOrDefault("pwd", "");
             if (id.isEmpty()) {
                 System.out.println("管理员数据文件格式异常");
                 return null;
             }
-            return new String[]{name, id, pwd};
+            return new String[]{name, id, phone, pwd};
         } catch (Exception e) {
             System.out.println("读取管理员信息失败：" + e.getMessage());
             return null;
