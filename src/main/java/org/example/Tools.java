@@ -50,7 +50,7 @@ public class Tools {
         return map;
     }
 
-    private static XSSFWorkbook openOrCreateCustomerWorkbook(File file) throws IOException {
+    private static XSSFWorkbook openOrCreateWorkbook(File file) throws IOException {
         XSSFWorkbook wb;
         if (file.exists()) {
             try (FileInputStream fis = new FileInputStream(file)) {
@@ -59,7 +59,6 @@ public class Tools {
         } else {
             wb = new XSSFWorkbook();
         }
-        if (wb.getSheetIndex("购物历史") < 0) wb.createSheet("购物历史");
         return wb;
     }
 
@@ -91,9 +90,11 @@ public class Tools {
         File infoFile = new File(folder, "customer_information.xlsx");
         XSSFWorkbook wb = null;
         try {
-            wb = openOrCreateCustomerWorkbook(infoFile);
+            wb = openOrCreateWorkbook(infoFile);
             int idx = wb.getSheetIndex("基本信息");
             if (idx >= 0) wb.removeSheetAt(idx);
+            int histIdx = wb.getSheetIndex("购物历史");
+            if (histIdx >= 0) wb.removeSheetAt(histIdx);
             Sheet s1 = wb.createSheet("基本信息");
             String[][] kv = {
                     {"userName", customer.getUserName()},
@@ -175,10 +176,11 @@ public class Tools {
     public static boolean initShoppingHistory(String folderPath) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, "customer_information.xlsx");
+        File file = new File(folder, "shopping_history.xlsx");
         XSSFWorkbook wb = null;
         try {
-            wb = openOrCreateCustomerWorkbook(file);
+            wb = openOrCreateWorkbook(file);
+            if (wb.getSheetIndex("购物历史") < 0) wb.createSheet("购物历史");
             saveWorkbook(wb, file);
             return true;
         } catch (Exception e) {
@@ -192,11 +194,12 @@ public class Tools {
     public static boolean appendShoppingHistory(String folderPath, String record) {
         File folder = new File(folderPath);
         if (!folder.exists()) folder.mkdirs();
-        File file = new File(folder, "customer_information.xlsx");
+        File file = new File(folder, "shopping_history.xlsx");
         XSSFWorkbook wb = null;
         try {
-            wb = openOrCreateCustomerWorkbook(file);
+            wb = openOrCreateWorkbook(file);
             Sheet sheet = wb.getSheet("购物历史");
+            if (sheet == null) sheet = wb.createSheet("购物历史");
             int lastRow = sheet.getLastRowNum();
             Row row = sheet.createRow(lastRow + 1);
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
@@ -214,9 +217,12 @@ public class Tools {
 
     public static List<String> readShoppingHistory(String folderPath) {
         List<String> history = new ArrayList<>();
-        File file = new File(folderPath, "customer_information.xlsx");
-        if (!file.exists()) return history;
-        try (FileInputStream fis = new FileInputStream(file);
+        File historyFile = new File(folderPath, "shopping_history.xlsx");
+        if (!historyFile.exists()) {
+            migrateOldShoppingHistory(folderPath, history);
+            return history;
+        }
+        try (FileInputStream fis = new FileInputStream(historyFile);
              XSSFWorkbook wb = new XSSFWorkbook(fis)) {
             Sheet sheet = wb.getSheet("购物历史");
             if (sheet == null) return history;
@@ -228,6 +234,35 @@ public class Tools {
             System.out.println("读取购物历史失败：" + e.getMessage());
         }
         return history;
+    }
+
+    private static void migrateOldShoppingHistory(String folderPath, List<String> history) {
+        File oldFile = new File(folderPath, "customer_information.xlsx");
+        if (!oldFile.exists()) return;
+        try (FileInputStream fis = new FileInputStream(oldFile);
+             XSSFWorkbook wb = new XSSFWorkbook(fis)) {
+            Sheet sheet = wb.getSheet("购物历史");
+            if (sheet == null) return;
+            for (Row row : sheet) {
+                String rec = getCellStringValue(row.getCell(0));
+                if (!rec.isEmpty()) history.add(rec);
+            }
+            if (!history.isEmpty()) {
+                File folder = new File(folderPath);
+                if (!folder.exists()) folder.mkdirs();
+                XSSFWorkbook newWb = new XSSFWorkbook();
+                Sheet newSheet = newWb.createSheet("购物历史");
+                for (int i = 0; i < history.size(); i++) {
+                    Row r = newSheet.createRow(i);
+                    r.createCell(0).setCellValue(history.get(i));
+                }
+                saveWorkbook(newWb, new File(folder, "shopping_history.xlsx"));
+                newWb.close();
+                System.out.println("已检测到旧版购物历史，已自动迁移到 shopping_history.xlsx");
+            }
+        } catch (Exception e) {
+            System.out.println("旧购物历史迁移失败：" + e.getMessage());
+        }
     }
 
     public static boolean writeGoodsInformationToFile(Good good, String folderPath) {
